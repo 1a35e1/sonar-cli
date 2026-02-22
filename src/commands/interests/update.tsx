@@ -78,6 +78,12 @@ export default function InterestsUpdate({ options: flags }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!error || !flags.json) return
+    process.stderr.write(`${error}\n`)
+    process.exit(1)
+  }, [error, flags.json])
+
+  useEffect(() => {
     async function run() {
       try {
         const isPatch = !!(flags.addKeywords || flags.removeKeywords || flags.addTopics || flags.removeTopics)
@@ -139,15 +145,16 @@ export default function InterestsUpdate({ options: flags }: Props) {
     run()
   }, [])
 
-  if (error) return <Text color="red">Error: {error}</Text>
+  if (error) {
+    if (flags.json) return <></>
+    return <Text color="red">Error: {error}</Text>
+  }
 
   if (!data) {
     if (flags.json) return <></>
     const label = flags.fromPrompt
       ? `Generating interest via ${getVendor(flags.vendor)}...`
-      : (flags.addKeywords || flags.removeKeywords || flags.addTopics || flags.removeTopics)
-        ? 'Updating interest...'
-        : 'Updating interest...'
+      : 'Updating interest...'
     return <Spinner label={label} />
   }
 
