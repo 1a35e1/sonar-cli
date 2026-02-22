@@ -1,0 +1,48 @@
+{
+  "name": "@1a35e1/sonar-cli",
+  "version": "0.1.0",
+  "description": "X/Twitter social graph CLI for signal filtering and curation",
+  "type": "module",
+  "bin": {
+    "sonar": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "types": "graphql-codegen --config codegen.ts",
+    "sonar": "tsx src/cli.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "tsc"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11",
+    "date-fns": "4.1.0",
+    "graphql": "^16.12.0",
+    "graphql-request": "^7.4.0",
+    "ink": "^6",
+    "ink-table": "^3.1.0",
+    "pastel": "^3.0.0",
+    "react": "^19",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.5",
+    "@graphql-codegen/typescript-graphql-request": "^6.4.0",
+    "@types/better-sqlite3": "^7",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "biome": "^0.3.3",
+    "ink-link": "^5.0.0",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}
