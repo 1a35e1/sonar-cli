@@ -20,7 +20,7 @@ This cli has been designed to handover indexing and consumption to agents.
 Install the CLI
 
 ```sh
-pnpm add -g @1a35e1/sonar-cli
+pnpm add -g @1a35e1/sonar-cli@latest
 ```
 
 Register your API key.
