@@ -142,6 +142,7 @@ export default function InterestsUpdate({ options: flags }: Props) {
   if (error) return <Text color="red">Error: {error}</Text>
 
   if (!data) {
+    if (flags.json) return <></>
     const label = flags.fromPrompt
       ? `Generating interest via ${getVendor(flags.vendor)}...`
       : (flags.addKeywords || flags.removeKeywords || flags.addTopics || flags.removeTopics)
