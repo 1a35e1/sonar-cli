@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Box, Text, useInput } from 'ink'
+import { Box, Text, useApp, useInput } from 'ink'
 import { gql } from '../lib/client.js'
 import { readConfig } from '../lib/config.js'
 import { Spinner } from '../components/Spinner.js'
@@ -314,6 +314,7 @@ function InboxView({ items, created }: { items: Suggestion[]; created: boolean }
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Quickstart() {
+  const { exit } = useApp()
   const [phase, setPhase] = useState<Phase>({ type: 'loading' })
   const abortedRef = useRef(false)
 
@@ -391,7 +392,7 @@ export default function Quickstart() {
   const handleAbort = () => {
     abortedRef.current = true
     process.stdout.write('\nAborted. Run sonar quickstart again whenever you\'re ready.\n')
-    process.exit(0)
+    exit()
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
