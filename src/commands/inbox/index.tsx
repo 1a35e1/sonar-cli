@@ -80,6 +80,18 @@ export default function Inbox({ options: flags }: Props) {
         })
 
         if (flags.json) {
+          if (result.suggestions.length === 0) {
+            const statusLabel = flags.all ? 'all statuses' : (flags.status ?? 'inbox')
+            process.stderr.write(
+              [
+                `[sonar inbox] Empty result for status=${statusLabel} — possible causes:`,
+                '  • No interests defined. Run: sonar interests create --from-prompt "..."',
+                '  • Ingest and matching have not run. Run: sonar ingest tweets && sonar interests match',
+                '  • All inbox items were already actioned. Try: sonar inbox --all',
+                '  • Account/quota issue. Run: sonar account',
+              ].join('\n') + '\n'
+            )
+          }
           process.stdout.write(JSON.stringify(result.suggestions, null, 2) + '\n')
           process.exit(0)
         }
@@ -101,7 +113,25 @@ export default function Inbox({ options: flags }: Props) {
   }
 
   if (data.length === 0) {
-    return <Text dimColor>Inbox is empty.</Text>
+    const statusLabel = flags.all ? 'all statuses' : (flags.status ?? 'inbox')
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="yellow">Inbox is empty{statusLabel !== 'all statuses' ? ` (status: ${statusLabel})` : ''}.</Text>
+        <Box flexDirection="column" gap={0}>
+          <Text dimColor>Things to check:</Text>
+          {flags.status && !flags.all && (
+            <Text dimColor>  1. Broaden scope:            <Text color="cyan">sonar inbox --all</Text></Text>
+          )}
+          <Text dimColor>  {flags.status && !flags.all ? '2' : '1'}. Interests defined?       <Text color="cyan">sonar interests</Text></Text>
+          <Text dimColor>  {flags.status && !flags.all ? '3' : '2'}. Ingest recent tweets:    <Text color="cyan">sonar ingest tweets</Text></Text>
+          <Text dimColor>  {flags.status && !flags.all ? '4' : '3'}. Run interest matching:   <Text color="cyan">sonar interests match</Text></Text>
+          <Text dimColor>  {flags.status && !flags.all ? '5' : '4'}. Monitor job progress:    <Text color="cyan">sonar ingest monitor</Text></Text>
+        </Box>
+        <Text dimColor>
+          Account status and quota: <Text color="cyan">sonar account</Text>
+        </Text>
+      </Box>
+    )
   }
 
   if (flags.interactive) {

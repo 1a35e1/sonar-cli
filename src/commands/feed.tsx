@@ -42,6 +42,21 @@ export default function Feed({ options: flags }: Props) {
         })
 
         if (flags.json) {
+          if (result.feed.length === 0) {
+            const kind = flags.kind ?? 'default'
+            process.stderr.write(
+              [
+                '[sonar feed] Empty result — possible causes:',
+                kind === 'bookmarks'
+                  ? '  • No bookmarks ingested yet. Run: sonar ingest bookmarks'
+                  : `  • No tweets matched your interests in the last ${windowLabel(flags.hours, flags.days)}.`,
+                '  • Check interests are configured: sonar interests',
+                '  • Ingest may be stale: sonar ingest tweets && sonar ingest monitor',
+                '  • Widen the window: sonar feed --hours 48',
+                '  • Account/quota status: sonar account',
+              ].join('\n') + '\n'
+            )
+          }
           process.stdout.write(`${JSON.stringify(result.feed, null, 2)}\n`)
           process.exit(0)
         }
@@ -63,7 +78,35 @@ export default function Feed({ options: flags }: Props) {
   }
 
   if (data.length === 0) {
-    return <Text dimColor>No tweets found in this window.</Text>
+    const kind = flags.kind ?? 'default'
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="yellow">No tweets found.</Text>
+        {kind === 'bookmarks' ? (
+          <Box flexDirection="column" gap={0}>
+            <Text dimColor>Your bookmarks feed is empty. Things to check:</Text>
+            <Text dimColor>  1. Ingest bookmarks first:  <Text color="cyan">sonar ingest bookmarks</Text></Text>
+            <Text dimColor>  2. Then monitor progress:   <Text color="cyan">sonar ingest monitor --watch</Text></Text>
+          </Box>
+        ) : (
+          <Box flexDirection="column" gap={0}>
+            <Text dimColor>
+              No {kind === 'followers' ? 'follower' : kind === 'following' ? 'following' : 'network'} tweets
+              matched your interests in the last <Text color="white">{windowLabel(flags.hours, flags.days)}</Text>.
+            </Text>
+            <Text dimColor>Things to check:</Text>
+            <Text dimColor>  1. Widen the window:         <Text color="cyan">sonar feed --hours 48</Text> or <Text color="cyan">--days 7</Text></Text>
+            <Text dimColor>  2. Check interests exist:    <Text color="cyan">sonar interests</Text></Text>
+            <Text dimColor>  3. Trigger ingest if stale:  <Text color="cyan">sonar ingest tweets</Text></Text>
+            <Text dimColor>  4. Check ingest progress:    <Text color="cyan">sonar ingest monitor</Text></Text>
+            <Text dimColor>  5. Run matching:             <Text color="cyan">sonar interests match</Text></Text>
+          </Box>
+        )}
+        <Text dimColor>
+          Account status and quota: <Text color="cyan">sonar account</Text>
+        </Text>
+      </Box>
+    )
   }
 
   if (flags.interactive) {
