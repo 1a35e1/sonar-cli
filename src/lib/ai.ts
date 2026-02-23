@@ -37,20 +37,63 @@ Optimise every field for semantic density and current relevance, not readability
 
 Respond ONLY with valid JSON, no markdown, no explanation.`
 
+/**
+ * Wraps fetch() with an AbortController timeout.
+ * Throws a descriptive error when the deadline is reached so callers can
+ * surface an actionable message (vendor name, elapsed time, next steps).
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+  vendorLabel: string,
+): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal })
+    clearTimeout(timer)
+    return res
+  } catch (err) {
+    clearTimeout(timer)
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(
+        `${vendorLabel} request timed out after ${timeoutMs / 1000}s.\n` +
+        'Possible causes:\n' +
+        '  • The AI provider is overloaded or rate-limiting you\n' +
+        '  • Your network connection is slow or unstable\n' +
+        '  • The web_search tool (OpenAI) took longer than usual\n' +
+        'Try again in a moment, or use --vendor to switch providers.'
+      )
+    }
+    throw err
+  }
+}
+
+// OpenAI uses web_search_preview which can legitimately take 30-60 s.
+const OPENAI_TIMEOUT_MS = 90_000
+// Anthropic calls are simpler — 60 s is generous.
+const ANTHROPIC_TIMEOUT_MS = 60_000
+
 async function callOpenAI(prompt: string, apiKey: string): Promise<GeneratedInterest> {
-  const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+  const res = await fetchWithTimeout(
+    'https://api.openai.com/v1/responses',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        tools: [{ type: 'web_search_preview' }],
+        instructions: SYSTEM_PROMPT,
+        input: prompt,
+      }),
     },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      tools: [{ type: 'web_search_preview' }],
-      instructions: SYSTEM_PROMPT,
-      input: prompt,
-    }),
-  })
+    OPENAI_TIMEOUT_MS,
+    'OpenAI',
+  )
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -69,20 +112,25 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<GeneratedInte
 }
 
 async function callAnthropic(prompt: string, apiKey: string): Promise<GeneratedInterest> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+  const res = await fetchWithTimeout(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: prompt }],
+      }),
     },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
+    ANTHROPIC_TIMEOUT_MS,
+    'Anthropic',
+  )
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -104,20 +152,25 @@ async function callOpenAIReply(tweetText: string, userPrompt: string, apiKey: st
     ? `Original tweet: "${tweetText}"\n\nAngle for reply: ${userPrompt}`
     : `Original tweet: "${tweetText}"\n\nWrite a thoughtful reply.`
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+  const res = await fetchWithTimeout(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: REPLY_SYSTEM_PROMPT },
+          { role: 'user', content: userContent },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: REPLY_SYSTEM_PROMPT },
-        { role: 'user', content: userContent },
-      ],
-    }),
-  })
+    OPENAI_TIMEOUT_MS,
+    'OpenAI',
+  )
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -134,20 +187,25 @@ async function callAnthropicReply(tweetText: string, userPrompt: string, apiKey:
     ? `Original tweet: "${tweetText}"\n\nAngle for reply: ${userPrompt}`
     : `Original tweet: "${tweetText}"\n\nWrite a thoughtful reply.`
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+  const res = await fetchWithTimeout(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        system: REPLY_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userContent }],
+      }),
     },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      system: REPLY_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userContent }],
-    }),
-  })
+    ANTHROPIC_TIMEOUT_MS,
+    'Anthropic',
+  )
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

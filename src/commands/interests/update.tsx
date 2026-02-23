@@ -153,7 +153,7 @@ export default function InterestsUpdate({ options: flags }: Props) {
   if (!data) {
     if (flags.json) return <></>
     const label = flags.fromPrompt
-      ? `Generating interest via ${getVendor(flags.vendor)}...`
+      ? `Generating interest via ${getVendor(flags.vendor)}... (may take up to ${getVendor(flags.vendor) === 'openai' ? '90' : '60'}s with web search)`
       : 'Updating interest...'
     return <Spinner label={label} />
   }
