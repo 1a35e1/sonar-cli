@@ -42,9 +42,12 @@ export default function Monitor({ options: flags }: Props) {
     const baseUrl = getApiUrl().replace(/\/graphql$/, '')
 
     async function fetchStatus() {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 10_000)
       try {
         const [statusRes, meRes] = await Promise.all([
           fetch(`${baseUrl}/indexing/status`, {
+            signal: controller.signal,
             headers: { Authorization: `Bearer ${token}` },
           }),
           gql<{ me: Account }>(`
@@ -64,12 +67,22 @@ export default function Monitor({ options: flags }: Props) {
             }
           `),
         ])
+        clearTimeout(timer)
         if (!statusRes.ok) throw new Error(`HTTP ${statusRes.status} from ${baseUrl}`)
         const status = await statusRes.json()
         setData({ me: meRes.me, queues: status.queues })
         setError(null)
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err))
+        clearTimeout(timer)
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          setError(
+            'Monitor request timed out (10s). ' +
+            'The server may be overloaded. ' +
+            'Check SONAR_API_URL or retry without --watch.'
+          )
+        } else {
+          setError(err instanceof Error ? err.message : String(err))
+        }
       }
     }
 
