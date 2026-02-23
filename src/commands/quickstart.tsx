@@ -105,7 +105,7 @@ type Phase =
   | { type: 'confirm'; me: Account; suggestions: InterestDraft[] }
   | { type: 'creating'; suggestions: InterestDraft[]; progress: number }
   | { type: 'ingesting' }
-  | { type: 'inbox'; items: Suggestion[] }
+  | { type: 'inbox'; items: Suggestion[]; created: boolean }
   | { type: 'inbox-empty' }
 
 // ─── Starter interest suggestions ────────────────────────────────────────────
@@ -256,11 +256,15 @@ function CreatingView({ suggestions, progress }: { suggestions: InterestDraft[];
   )
 }
 
-function InboxView({ items }: { items: Suggestion[] }) {
+function InboxView({ items, created }: { items: Suggestion[]; created: boolean }) {
   if (items.length === 0) {
     return (
       <Box flexDirection="column" gap={1}>
-        <Text color="green">✓ Interests created and indexing triggered!</Text>
+        {created ? (
+          <Text color="green">✓ Interests created and indexing triggered!</Text>
+        ) : (
+          <Text color="green">✓ Your interests are set up — indexing is in progress.</Text>
+        )}
         <Box flexDirection="column" gap={0}>
           <Text>Your inbox is empty right now — indexing takes a few minutes.</Text>
           <Text dimColor>Check back shortly with: <Text color="cyan">sonar inbox</Text></Text>
@@ -335,7 +339,7 @@ export default function Quickstart() {
             status: 'INBOX',
             limit: 20,
           })
-          setPhase({ type: 'inbox', items: inbox.suggestions })
+          setPhase({ type: 'inbox', items: inbox.suggestions, created: false })
           return
         }
 
@@ -378,7 +382,7 @@ export default function Quickstart() {
         status: 'INBOX',
         limit: 20,
       })
-      setPhase({ type: 'inbox', items: inbox.suggestions })
+      setPhase({ type: 'inbox', items: inbox.suggestions, created: true })
     } catch (err) {
       setPhase({ type: 'error', message: err instanceof Error ? err.message : String(err) })
     }
@@ -423,6 +427,6 @@ export default function Quickstart() {
       return <Spinner label="Triggering tweet indexing..." />
 
     case 'inbox':
-      return <InboxView items={phase.items} />
+      return <InboxView items={phase.items} created={phase.created} />
   }
 }
