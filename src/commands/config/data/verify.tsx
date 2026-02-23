@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Text } from 'ink'
 import { existsSync } from 'node:fs'
-import Database from 'better-sqlite3'
 import { DB_PATH } from '../../../lib/db.js'
+import { integrityCheck } from './utils.js'
 
 export const options = zod.object({
   path: zod.string().optional().describe('Database path (default: local sonar DB path)'),
@@ -11,14 +11,6 @@ export const options = zod.object({
 })
 
 type Props = { options: zod.infer<typeof options> }
-
-function integrityCheck(path: string): string {
-  const db = new Database(path, { readonly: true })
-  const rows = db.pragma('integrity_check') as Array<Record<string, string>>
-  db.close()
-  const first = Object.values(rows[0] ?? {})[0]
-  return String(first ?? 'unknown')
-}
 
 export default function DataVerify({ options: flags }: Props) {
   const [error, setError] = useState<string | null>(null)
