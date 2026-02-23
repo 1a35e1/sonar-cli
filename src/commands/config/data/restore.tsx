@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Text } from 'ink'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { DB_PATH } from '../../../lib/db.js'
 import { integrityCheck, copyDbWithSidecars } from './utils.js'
 
@@ -36,7 +36,7 @@ export default function DataRestore({ options: flags }: Props) {
       const srcCheck = integrityCheck(src)
       if (srcCheck !== 'ok') throw new Error(`backup integrity check failed: ${srcCheck}`)
 
-      mkdirSync(dst.replace(/\/[^/]+$/, '') || '.', { recursive: true })
+      mkdirSync(dirname(dst), { recursive: true })
 
       // Snapshot the current DB — including WAL/SHM sidecars — so we have
       // a complete, self-consistent point-in-time snapshot to roll back to if
