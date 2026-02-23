@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
-import { generateInterest } from '../../lib/ai.js'
+import { generateInterest, OPENAI_TIMEOUT_MS, ANTHROPIC_TIMEOUT_MS } from '../../lib/ai.js'
 import { getVendor } from '../../lib/config.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Interest } from './index.js'
@@ -106,8 +106,10 @@ export default function InterestsCreate({ options: flags }: Props) {
 
   if (!data) {
     if (flags.json) return <></>
+    const vendor = getVendor(flags.vendor)
+    const timeoutSec = (vendor === 'openai' ? OPENAI_TIMEOUT_MS : ANTHROPIC_TIMEOUT_MS) / 1000
     const label = flags.fromPrompt
-      ? `Generating interest via ${getVendor(flags.vendor)}...`
+      ? `Generating interest via ${vendor}... (may take up to ${timeoutSec}s${vendor === 'openai' ? ' with web search' : ''})`
       : 'Creating interest...'
     return <Spinner label={label} />
   }
