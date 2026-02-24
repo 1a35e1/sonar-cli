@@ -186,7 +186,7 @@ function ConfirmView({
   onAbort: () => void
 }) {
   useInput((input, key) => {
-    if (key.return || input === 'y' || input === 'Y' || input === '') {
+    if (key.return || input === 'y' || input === 'Y') {
       onConfirm()
     } else if (input === 'n' || input === 'N' || key.escape) {
       onAbort()
@@ -243,7 +243,7 @@ function CreatingView({ suggestions, progress }: { suggestions: InterestDraft[];
           {i < progress ? (
             <Text color="green">✓</Text>
           ) : i === progress ? (
-            <Spinner />
+            <Spinner label="" />
           ) : (
             <Text dimColor>·</Text>
           )}
@@ -383,7 +383,11 @@ export default function Quickstart() {
         status: 'INBOX',
         limit: 20,
       })
-      setPhase({ type: 'inbox', items: inbox.suggestions, created: true })
+      setPhase(
+        inbox.suggestions.length === 0
+          ? { type: 'inbox-empty' }
+          : { type: 'inbox', items: inbox.suggestions, created: true }
+      )
     } catch (err) {
       setPhase({ type: 'error', message: err instanceof Error ? err.message : String(err) })
     }
@@ -429,5 +433,8 @@ export default function Quickstart() {
 
     case 'inbox':
       return <InboxView items={phase.items} created={phase.created} />
+
+    case 'inbox-empty':
+      return <InboxView items={[]} created={true} />
   }
 }
