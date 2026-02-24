@@ -106,7 +106,6 @@ type Phase =
   | { type: 'creating'; suggestions: InterestDraft[]; progress: number }
   | { type: 'ingesting' }
   | { type: 'inbox'; items: Suggestion[]; created: boolean }
-  | { type: 'inbox-empty' }
 
 // ─── Starter interest suggestions ────────────────────────────────────────────
 
@@ -383,11 +382,7 @@ export default function Quickstart() {
         status: 'INBOX',
         limit: 20,
       })
-      setPhase(
-        inbox.suggestions.length === 0
-          ? { type: 'inbox-empty' }
-          : { type: 'inbox', items: inbox.suggestions, created: true }
-      )
+      setPhase({ type: 'inbox', items: inbox.suggestions, created: true })
     } catch (err) {
       setPhase({ type: 'error', message: err instanceof Error ? err.message : String(err) })
     }
@@ -433,8 +428,5 @@ export default function Quickstart() {
 
     case 'inbox':
       return <InboxView items={phase.items} created={phase.created} />
-
-    case 'inbox-empty':
-      return <InboxView items={[]} created={true} />
   }
 }
