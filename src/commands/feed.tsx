@@ -51,7 +51,7 @@ export default function Feed({ options: flags }: Props) {
                   ? '  • No bookmarks ingested yet. Run: sonar ingest bookmarks'
                   : `  • No tweets matched your interests in the last ${windowLabel(flags.hours, flags.days)}.`,
                 '  • Check interests are configured: sonar interests',
-                '  • Ingest may be stale: sonar ingest tweets && sonar ingest monitor',
+                '  • Ingest may be stale: sonar ingest tweets && sonar monitor',
                 '  • Widen the window: sonar feed --hours 48',
                 '  • Account/quota status: sonar account',
               ].join('\n') + '\n'
@@ -86,7 +86,7 @@ export default function Feed({ options: flags }: Props) {
           <Box flexDirection="column" gap={0}>
             <Text dimColor>Your bookmarks feed is empty. Things to check:</Text>
             <Text dimColor>  1. Ingest bookmarks first:  <Text color="cyan">sonar ingest bookmarks</Text></Text>
-            <Text dimColor>  2. Then monitor progress:   <Text color="cyan">sonar ingest monitor --watch</Text></Text>
+            <Text dimColor>  2. Then monitor progress:   <Text color="cyan">sonar monitor --watch</Text></Text>
           </Box>
         ) : (
           <Box flexDirection="column" gap={0}>
@@ -98,7 +98,7 @@ export default function Feed({ options: flags }: Props) {
             <Text dimColor>  1. Widen the window:         <Text color="cyan">sonar feed --hours 48</Text> or <Text color="cyan">--days 7</Text></Text>
             <Text dimColor>  2. Check interests exist:    <Text color="cyan">sonar interests</Text></Text>
             <Text dimColor>  3. Trigger ingest if stale:  <Text color="cyan">sonar ingest tweets</Text></Text>
-            <Text dimColor>  4. Check ingest progress:    <Text color="cyan">sonar ingest monitor</Text></Text>
+            <Text dimColor>  4. Check ingest progress:    <Text color="cyan">sonar monitor</Text></Text>
             <Text dimColor>  5. Run matching:             <Text color="cyan">sonar interests match</Text></Text>
           </Box>
         )}

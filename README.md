@@ -46,8 +46,8 @@ Ingest your first `tweets` and check to `monitor` progress.
 ```sh
 sonar ingest tweets
 
-sonar ingest monitor
-sonar ingest monitor --watch
+sonar monitor
+sonar monitor --watch
 ```
 
 ---
