@@ -22,7 +22,7 @@ export default function IndexTweets() {
         `Ingest trigger timed out after ${INGEST_TIMEOUT_MS / 1000}s.\n` +
         'The server accepted the request but did not respond in time.\n' +
         'Next steps:\n' +
-        '  • Run "sonar ingest monitor" — the job may still be queued\n' +
+        '  • Run "sonar monitor" — the job may still be queued\n' +
         '  • Check SONAR_API_URL points to the correct endpoint\n' +
         '  • Verify the server is healthy and retry'
       )
@@ -58,7 +58,7 @@ export default function IndexTweets() {
         </Text>
         {timedOut && (
           <Text dimColor>
-            Tip: run <Text color="cyan">sonar ingest monitor</Text> to check
+            Tip: run <Text color="cyan">sonar monitor</Text> to check
             whether the job was queued despite the timeout.
           </Text>
         )}

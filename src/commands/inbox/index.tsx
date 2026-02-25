@@ -125,7 +125,7 @@ export default function Inbox({ options: flags }: Props) {
           <Text dimColor>  {flags.status && !flags.all ? '2' : '1'}. Interests defined?       <Text color="cyan">sonar interests</Text></Text>
           <Text dimColor>  {flags.status && !flags.all ? '3' : '2'}. Ingest recent tweets:    <Text color="cyan">sonar ingest tweets</Text></Text>
           <Text dimColor>  {flags.status && !flags.all ? '4' : '3'}. Run interest matching:   <Text color="cyan">sonar interests match</Text></Text>
-          <Text dimColor>  {flags.status && !flags.all ? '5' : '4'}. Monitor job progress:    <Text color="cyan">sonar ingest monitor</Text></Text>
+          <Text dimColor>  {flags.status && !flags.all ? '5' : '4'}. Monitor job progress:    <Text color="cyan">sonar monitor</Text></Text>
         </Box>
         <Text dimColor>
           Account status and quota: <Text color="cyan">sonar account</Text>
