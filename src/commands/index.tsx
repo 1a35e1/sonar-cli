@@ -18,6 +18,7 @@ export default function Index() {
         <Text>  monitor       Job queue monitor and account status</Text>
         <Text>  config        Show or set CLI config</Text>
         <Text>  account       Account info and plan usage</Text>
+        <Text>  quickstart    First-run setup wizard</Text>
       </Box>
       <Text dimColor>Run <Text color="cyan">sonar &lt;command&gt; --help</Text> for command-specific options.</Text>
     </Box>
