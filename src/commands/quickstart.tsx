@@ -33,14 +33,7 @@ const CREATE_MUTATION = `
       keywords: $keywords
       relatedTopics: $relatedTopics
     }) {
-      id: nanoId
-      name
-      description
-      keywords
-      relatedTopics
-      version
-      createdAt
-      updatedAt
+      nanoId
     }
   }
 `
@@ -124,7 +117,7 @@ function buildStarterSuggestions(_xHandle: string): InterestDraft[] {
 function relativeTime(dateStr: string): string {
   const ts = new Date(dateStr).getTime()
   if (isNaN(ts)) return '?'
-  const diff = Date.now() - ts
+  const diff = Math.max(0, Date.now() - ts)
   const mins = Math.floor(diff / 60000)
   if (mins < 60) return `${mins}m`
   const hours = Math.floor(mins / 60)
@@ -133,9 +126,9 @@ function relativeTime(dateStr: string): string {
 }
 
 function hasToken(): boolean {
-  if (process.env.SONAR_API_KEY) return true
+  if (process.env.SONAR_API_KEY?.trim()) return true
   const config = readConfig()
-  return Boolean(config.token)
+  return Boolean(config.token?.trim())
 }
 
 // ─── Sub-renders ──────────────────────────────────────────────────────────────
