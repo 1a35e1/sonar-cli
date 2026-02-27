@@ -3,8 +3,6 @@ import { Box, Text, useApp, useInput } from 'ink'
 import { gql } from '../lib/client.js'
 import { readConfig } from '../lib/config.js'
 import { Spinner } from '../components/Spinner.js'
-import type { Account } from '../components/AccountCard.js'
-import type { Interest } from './interests/index.js'
 import type { Suggestion } from './inbox/index.js'
 
 // ─── Queries / Mutations ──────────────────────────────────────────────────────
@@ -12,26 +10,10 @@ import type { Suggestion } from './inbox/index.js'
 const BOOTSTRAP_QUERY = `
   query QuickstartBootstrap {
     me {
-      accountId
-      email
       xHandle
-      xid
-      isPayingCustomer
-      indexingAccounts
-      indexedTweets
-      pendingEmbeddings
-      twitterIndexedAt
-      refreshedSuggestionsAt
     }
     projects {
       id: nanoId
-      name
-      description
-      keywords
-      relatedTopics
-      version
-      createdAt
-      updatedAt
     }
   }
 `
@@ -102,7 +84,7 @@ type Phase =
   | { type: 'loading' }
   | { type: 'unauthenticated' }
   | { type: 'error'; message: string }
-  | { type: 'confirm'; me: Account; suggestions: InterestDraft[] }
+  | { type: 'confirm'; me: { xHandle: string }; suggestions: InterestDraft[] }
   | { type: 'creating'; suggestions: InterestDraft[]; progress: number }
   | { type: 'ingesting' }
   | { type: 'inbox'; items: Suggestion[]; created: boolean }
@@ -140,7 +122,9 @@ function buildStarterSuggestions(_xHandle: string): InterestDraft[] {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const ts = new Date(dateStr).getTime()
+  if (isNaN(ts)) return '?'
+  const diff = Date.now() - ts
   const mins = Math.floor(diff / 60000)
   if (mins < 60) return `${mins}m`
   const hours = Math.floor(mins / 60)
@@ -179,7 +163,7 @@ function ConfirmView({
   onConfirm,
   onAbort,
 }: {
-  me: Account
+  me: { xHandle: string }
   suggestions: InterestDraft[]
   onConfirm: () => void
   onAbort: () => void
@@ -316,6 +300,7 @@ export default function Quickstart() {
   const { exit } = useApp()
   const [phase, setPhase] = useState<Phase>({ type: 'loading' })
   const abortedRef = useRef(false)
+  const confirmedRef = useRef(false)
 
   // ── Bootstrap: check auth + fetch me + projects ──────────────────────────
   useEffect(() => {
@@ -326,7 +311,7 @@ export default function Quickstart() {
 
     async function bootstrap() {
       try {
-        const result = await gql<{ me: Account | null; projects: Interest[] }>(BOOTSTRAP_QUERY)
+        const result = await gql<{ me: { xHandle: string } | null; projects: { id: string }[] }>(BOOTSTRAP_QUERY)
 
         if (!result.me) {
           setPhase({ type: 'unauthenticated' })
@@ -356,6 +341,8 @@ export default function Quickstart() {
 
   // ── Create interests + ingest (triggered from confirm handler) ────────────
   const handleConfirm = async (suggestions: InterestDraft[]) => {
+    if (confirmedRef.current) return
+    confirmedRef.current = true
     setPhase({ type: 'creating', suggestions, progress: 0 })
 
     try {
