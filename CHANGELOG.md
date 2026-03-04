@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **feat: add sonar quickstart command** — New `sonar quickstart` command for first-time setup. Checks authentication, proposes 3 starter interests tailored to the typical Sonar user, creates them on confirmation, triggers tweet indexing, and shows an initial inbox preview — all in one step.
+
 - **feat(config data): add sqlite backup/restore/verify commands** — New `sonar config data backup`, `config data restore`, and `config data verify` commands for managing the local SQLite database. Useful for safeguarding your data before migrations or upgrades.
 
 ### Fixed
