@@ -31,6 +31,7 @@ export async function gql<T>(
     if (flags.debug) {
       console.error(url, query, variables)
     }
+    console.log('url', url)
     res = await fetch(url, {
       method: 'POST',
       signal: controller.signal,
