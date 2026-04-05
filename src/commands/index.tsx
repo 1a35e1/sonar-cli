@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Box, Text, useStdout } from 'ink'
 import { Spinner } from '../components/Spinner.js'
-import { InteractiveFeedSession } from '../components/InteractiveSession.js'
+import { TriageSession } from '../components/InteractiveSession.js'
+import type { TriageItem } from '../components/InteractiveSession.js'
 import { gql } from '../lib/client.js'
 import { getFeedRender, getFeedWidth, getVendor } from '../lib/config.js'
 import { TweetCard } from '../components/TweetCard.js'
@@ -16,7 +17,7 @@ export const options = zod.object({
   render: zod.string().optional().describe('Output layout: card|table'),
   width: zod.number().optional().describe('Card width in columns'),
   json: zod.boolean().default(false).describe('Raw JSON output'),
-  interactive: zod.boolean().default(false).describe('Interactive session mode'),
+  interactive: zod.boolean().default(true).describe('Interactive session mode (default: on, use --no-interactive to disable)'),
   vendor: zod.string().optional().describe('AI vendor: openai|anthropic'),
 })
 
@@ -26,22 +27,16 @@ interface SuggestionItem {
   suggestionId: string
   score: number
   tweet: {
+    id: string
     xid: string
     text: string
     createdAt: string
-    likeCount: number
-    retweetCount: number
-    replyCount: number
     user: { displayName: string; username: string | null }
   }
 }
 
-interface UnifiedItem {
-  key: string
-  score: number
+interface UnifiedItem extends TriageItem {
   source: 'suggestion' | 'feed'
-  suggestionId?: string
-  feedItem?: FeedTweet
 }
 
 const FEED_QUERY = `
@@ -58,11 +53,11 @@ const FEED_QUERY = `
 `
 
 const INBOX_QUERY = `
-  query Inbox($limit: Int) {
-    suggestions(status: INBOX, limit: $limit) {
+  query Inbox($status: SuggestionStatus, $limit: Int) {
+    suggestions(status: $status, limit: $limit) {
       suggestionId score
       tweet {
-        xid text createdAt likeCount retweetCount replyCount
+        id xid text createdAt
         user { displayName username }
       }
     }
@@ -98,7 +93,7 @@ export default function Sonar({ options: flags }: Props) {
             limit,
             kind: flags.kind ?? 'default',
           }),
-          gql<{ suggestions: SuggestionItem[] }>(INBOX_QUERY, { limit }),
+          gql<{ suggestions: SuggestionItem[] }>(INBOX_QUERY, { status: 'INBOX', limit }),
         ])
 
         // Merge: deduplicate by xid, suggestions take priority, sort by score
@@ -113,10 +108,16 @@ export default function Sonar({ options: flags }: Props) {
               score: s.score,
               source: 'suggestion',
               suggestionId: s.suggestionId,
-              feedItem: {
-                score: s.score,
-                matchedKeywords: [],
-                tweet: { ...s.tweet, id: s.tweet.xid, user: { ...s.tweet.user, followersCount: null, followingCount: null } },
+              matchedKeywords: [],
+              tweet: {
+                id: s.tweet.id,
+                xid: s.tweet.xid,
+                text: s.tweet.text,
+                createdAt: s.tweet.createdAt,
+                likeCount: 0,
+                retweetCount: 0,
+                replyCount: 0,
+                user: { ...s.tweet.user, followersCount: null, followingCount: null },
               },
             })
           }
@@ -125,14 +126,20 @@ export default function Sonar({ options: flags }: Props) {
         for (const f of feedRes.feed) {
           if (!seen.has(f.tweet.xid)) {
             seen.add(f.tweet.xid)
-            merged.push({ key: f.tweet.xid, score: f.score, source: 'feed', feedItem: f })
+            merged.push({
+              key: f.tweet.xid,
+              score: f.score,
+              source: 'feed',
+              matchedKeywords: f.matchedKeywords,
+              tweet: f.tweet,
+            })
           }
         }
 
         merged.sort((a, b) => b.score - a.score)
 
         if (flags.json) {
-          process.stdout.write(JSON.stringify(merged.map((m) => m.feedItem), null, 2) + '\n')
+          process.stdout.write(JSON.stringify(merged, null, 2) + '\n')
           process.exit(0)
         }
 
@@ -173,7 +180,7 @@ export default function Sonar({ options: flags }: Props) {
   }
 
   if (flags.interactive) {
-    return <InteractiveFeedSession items={items.map((m) => m.feedItem!)} vendor={getVendor(flags.vendor)} />
+    return <TriageSession items={items} />
   }
 
   const kindLabel =
@@ -199,7 +206,7 @@ export default function Sonar({ options: flags }: Props) {
         {items.map((item, i) => (
           <Box key={item.key} flexDirection="column">
             <TweetCard
-              item={item.feedItem!}
+              item={{ score: item.score, matchedKeywords: item.matchedKeywords, tweet: item.tweet }}
               termWidth={termWidth}
               cardWidth={cardWidth}
               isLast={i === items.length - 1 && !item.suggestionId}

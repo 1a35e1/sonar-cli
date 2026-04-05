@@ -1,62 +1,35 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { Box, Text, useInput, useStdout } from 'ink'
-import { Spinner } from './Spinner.js'
-import { TweetCard } from './TweetCard.js'
 import { gql } from '../lib/client.js'
-import { generateReply } from '../lib/ai.js'
+import { relativeTime, TweetCard } from './TweetCard.js'
 import { getFeedWidth } from '../lib/config.js'
-import type { Vendor } from '../lib/config.js'
+import { execSync } from 'child_process'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Mode = 'view' | 'reply-input' | 'reply-loading' | 'reply-draft'
-
-interface FeedUser {
-  displayName: string
-  username: string | null
-  followersCount: number | null
-  followingCount: number | null
-}
-
-interface FeedTweet {
-  id: string
-  xid: string
-  text: string
-  createdAt: string
-  likeCount: number
-  retweetCount: number
-  replyCount: number
-  user: FeedUser
-}
-
-export interface FeedItem {
+export interface TriageItem {
+  key: string
   score: number
+  suggestionId?: string
   matchedKeywords: string[]
-  tweet: FeedTweet
+  tweet: {
+    id: string
+    xid: string
+    text: string
+    createdAt: string
+    likeCount: number
+    retweetCount: number
+    replyCount: number
+    user: {
+      displayName: string
+      username: string | null
+      followersCount: number | null
+      followingCount: number | null
+    }
+  }
 }
 
-interface InboxUser {
-  displayName: string
-  username: string | null
-}
-
-interface InboxTweet {
-  xid: string
-  text: string
-  createdAt: string
-  user: InboxUser
-}
-
-export interface Suggestion {
-  suggestionId: string
-  score: number
-  projectsMatched: number
-  status: string
-  relevance: number | null
-  tweet: InboxTweet
-}
-
-const UPDATE_SUGGESTION_MUTATION = `
+const UPDATE_MUTATION = `
   mutation UpdateSuggestion($suggestionId: ID!, $status: SuggestionStatus!) {
     updateSuggestion(input: { suggestionId: $suggestionId, status: $status }) {
       suggestionId
@@ -65,429 +38,134 @@ const UPDATE_SUGGESTION_MUTATION = `
   }
 `
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}m`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h`
-  return `${Math.floor(hours / 24)}d`
-}
-
 function Divider({ width }: { width: number }) {
   return <Text dimColor>{'─'.repeat(Math.min(width - 2, 72))}</Text>
 }
 
-// ─── Shared hook ──────────────────────────────────────────────────────────────
+// ─── Triage Session ───────────────────────────────────────────────────────────
 
-function useInteractiveState(total: number, vendor: Vendor) {
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [mode, setMode] = useState<Mode>('view')
-  const [replyInput, setReplyInput] = useState('')
-  const [replyDraft, setReplyDraft] = useState('')
-  const [statusMessage, setStatusMessage] = useState('')
-
-  const goNext = useCallback(() => {
-    setCurrentIndex((i) => Math.min(i + 1, total - 1))
-    setMode('view')
-    setReplyDraft('')
-    setStatusMessage('')
-  }, [total])
-
-  const goPrev = useCallback(() => {
-    setCurrentIndex((i) => Math.max(i - 1, 0))
-    setMode('view')
-    setReplyDraft('')
-    setStatusMessage('')
-  }, [])
-
-  const startReply = useCallback(() => {
-    setReplyInput('')
-    setMode('reply-input')
-  }, [])
-
-  const dismissDraft = useCallback(() => {
-    setReplyDraft('')
-    setMode('view')
-  }, [])
-
-  const handleReply = useCallback(
-    async (tweetText: string, angle: string) => {
-      setMode('reply-loading')
-      try {
-        const result = await generateReply(tweetText, angle, vendor)
-        setReplyDraft(result.reply)
-        setMode('reply-draft')
-      } catch (err) {
-        setStatusMessage(`Error: ${err instanceof Error ? err.message : String(err)}`)
-        setMode('view')
-      }
-    },
-    [vendor],
-  )
-
-  return {
-    currentIndex,
-    mode,
-    replyInput,
-    replyDraft,
-    statusMessage,
-    setReplyInput,
-    setMode,
-    setStatusMessage,
-    goNext,
-    goPrev,
-    startReply,
-    dismissDraft,
-    handleReply,
-  }
+interface TriageSessionProps {
+  items: TriageItem[]
 }
 
-// ─── Interactive Feed Session ─────────────────────────────────────────────────
+type ActionLabel = 'archived' | 'saved for later' | 'skipped' | null
 
-interface InteractiveFeedSessionProps {
-  items: FeedItem[]
-  vendor: Vendor
-}
-
-export function InteractiveFeedSession({ items, vendor }: InteractiveFeedSessionProps) {
+export function TriageSession({ items }: TriageSessionProps) {
   const { stdout } = useStdout()
   const termWidth = stdout.columns ?? 100
   const cardWidth = getFeedWidth()
 
-  const {
-    currentIndex,
-    mode,
-    replyInput,
-    replyDraft,
-    statusMessage,
-    setReplyInput,
-    setMode,
-    setStatusMessage,
-    goNext,
-    goPrev,
-    startReply,
-    dismissDraft,
-    handleReply,
-  } = useInteractiveState(items.length, vendor)
+  const [index, setIndex] = useState(0)
+  const [lastAction, setLastAction] = useState<ActionLabel>(null)
+  const [acting, setActing] = useState(false)
 
-  const current = items[currentIndex]
+  const done = index >= items.length
+  const current = items[index]
+
+  // Fire mutation in background, advance immediately
+  const act = useCallback(
+    (status: 'ARCHIVED' | 'LATER' | 'SKIPPED' | null, label: ActionLabel) => {
+      if (acting) return
+      const item = items[index]
+
+      if (status && item.suggestionId) {
+        setActing(true)
+        gql(UPDATE_MUTATION, { suggestionId: item.suggestionId, status })
+          .catch(() => {}) // silent — don't block the user
+          .finally(() => setActing(false))
+      }
+
+      setLastAction(label)
+      setIndex((i) => i + 1)
+    },
+    [index, items, acting],
+  )
 
   useInput(
     (input, key) => {
-      if (mode === 'reply-loading') return
-
-      if (mode === 'reply-input') {
-        if (key.return) {
-          handleReply(current.tweet.text, replyInput)
-        } else if (key.escape) {
-          setMode('view')
-          setReplyInput('')
-        } else if (key.backspace || key.delete) {
-          setReplyInput((s) => s.slice(0, -1))
-        } else if (input && !key.ctrl && !key.meta) {
-          setReplyInput((s) => s + input)
-        }
+      if (done) {
+        if (input === 'q') process.exit(0)
         return
       }
 
-      if (mode === 'reply-draft') {
-        if (input === 'r') {
-          handleReply(current.tweet.text, '')
-        } else if (key.escape) {
-          dismissDraft()
-        }
-        return
-      }
-
-      // view mode
-      if (input === 'n' || key.rightArrow || input === ' ') {
-        goNext()
-      } else if (input === 'p' || key.leftArrow) {
-        goPrev()
-      } else if (input === 'r') {
-        startReply()
-      } else if (input === 's') {
-        setStatusMessage('star — coming soon')
+      if (key.return || input === ' ') {
+        act('SKIPPED', 'skipped')
       } else if (input === 'a') {
-        setStatusMessage('analyze — coming soon')
+        act('ARCHIVED', 'archived')
+      } else if (input === 'l') {
+        act('LATER', 'saved for later')
+      } else if (input === 'o') {
+        const handle = current.tweet.user.username ?? current.tweet.user.displayName
+        const url = `https://x.com/${handle}/status/${current.tweet.id}`
+        try { execSync(`open "${url}"`) } catch {}
       } else if (input === 'q') {
         process.exit(0)
       }
     },
-    { isActive: mode !== 'reply-loading' },
+    { isActive: !acting },
   )
 
-  return (
-    <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text dimColor>
-          {'  '}
-          {currentIndex + 1} / {items.length}{'  ·  '}feed --interactive
-        </Text>
+  if (done) {
+    return (
+      <Box flexDirection="column" gap={1} marginTop={1}>
+        <Text color="green">✓ All clear</Text>
+        {lastAction && <Text dimColor>last: {lastAction}</Text>}
+        <Text dimColor>q to quit</Text>
       </Box>
-
-      <TweetCard item={current} termWidth={termWidth} cardWidth={cardWidth} isLast={true} />
-
-      {mode === 'reply-draft' && (
-        <Box flexDirection="column" marginTop={1}>
-          <Divider width={termWidth} />
-          <Box marginTop={1} flexDirection="column">
-            <Text dimColor>Draft reply:</Text>
-            <Box marginTop={1} paddingLeft={2} width={Math.min(termWidth, 80)}>
-              <Text wrap="wrap">{replyDraft}</Text>
-            </Box>
-          </Box>
-        </Box>
-      )}
-
-      {statusMessage && (
-        <Box marginTop={1}>
-          <Text color="green">{statusMessage}</Text>
-        </Box>
-      )}
-
-      <Box flexDirection="column" marginTop={1}>
-        <Divider width={termWidth} />
-        {mode === 'reply-input' ? (
-          <Box marginTop={1}>
-            <Text dimColor>Angle (Enter to auto-generate, Esc to cancel): </Text>
-            <Text>{replyInput}</Text>
-            <Text color="cyan">█</Text>
-          </Box>
-        ) : mode === 'reply-loading' ? (
-          <Box marginTop={1}>
-            <Spinner label="Generating reply..." />
-          </Box>
-        ) : mode === 'reply-draft' ? (
-          <Box marginTop={1}>
-            <Text dimColor>[r] new draft  [Esc] dismiss</Text>
-          </Box>
-        ) : (
-          <Box marginTop={1}>
-            <Text dimColor>[n]ext  [p]rev  [s]tar  [r]eply  [a]nalyze  [q]uit</Text>
-          </Box>
-        )}
-      </Box>
-    </Box>
-  )
-}
-
-// ─── Suggestion Card ──────────────────────────────────────────────────────────
-
-function scoreColor(score: number): string {
-  if (score >= 0.7) return 'green'
-  if (score >= 0.4) return 'yellow'
-  return 'white'
-}
-
-function statusColor(status: string): string {
-  switch (status.toLowerCase()) {
-    case 'inbox': return 'cyan'
-    case 'read': return 'green'
-    case 'skipped': return 'gray'
-    case 'later': return 'yellow'
-    case 'archived': return 'magenta'
-    default: return 'white'
+    )
   }
-}
 
-function SuggestionCard({ item, termWidth }: { item: Suggestion; termWidth: number }) {
-  const handle = item.tweet.user.username ?? item.tweet.user.displayName
-  const author = `@${handle}`
-  const profileUrl = `https://x.com/${handle}`
-  const tweetUrl = `https://x.com/${handle}/status/${item.tweet.xid}`
+  const handle = current.tweet.user.username ?? current.tweet.user.displayName
+  const tweetUrl = `https://x.com/${handle}/status/${current.tweet.id}`
+  const canTriage = !!current.suggestionId
 
   return (
     <Box flexDirection="column">
-      <Box>
-        <Text color="cyan" bold>
-          {relativeTime(item.tweet.createdAt)}
-        </Text>
-        <Text dimColor>  ·  </Text>
-        <Text color={scoreColor(item.score)}>{item.score.toFixed(2)}</Text>
-        <Text dimColor>  ·  </Text>
-        <Text color={statusColor(item.status)}>{item.status.toLowerCase()}</Text>
-        {item.projectsMatched > 0 && (
-          <Text dimColor>  ·  {item.projectsMatched} interest{item.projectsMatched !== 1 ? 's' : ''}</Text>
-        )}
+      <Box marginBottom={1} gap={3}>
+        <Text dimColor>{index + 1} / {items.length}</Text>
+        {lastAction && <Text color="green">✓ {lastAction}</Text>}
       </Box>
 
-      <Box>
-        <Text color="gray">{'└'} </Text>
-        <Text color="blueBright" bold>
-          {author}
-        </Text>
-      </Box>
-
-      <Box paddingLeft={2} width={Math.min(termWidth, 82)} marginTop={1}>
-        <Text wrap="wrap">{item.tweet.text}</Text>
-      </Box>
-
-      <Box marginLeft={2} marginTop={1}>
-        <Text dimColor>{profileUrl} · {tweetUrl}</Text>
-      </Box>
-    </Box>
-  )
-}
-
-// ─── Interactive Inbox Session ────────────────────────────────────────────────
-
-interface InteractiveInboxSessionProps {
-  items: Suggestion[]
-  vendor: Vendor
-}
-
-const INBOX_STATUS_KEYS: Record<string, string> = {
-  R: 'READ',
-  S: 'SKIPPED',
-  L: 'LATER',
-  A: 'ARCHIVED',
-}
-
-export function InteractiveInboxSession({ items, vendor }: InteractiveInboxSessionProps) {
-  const { stdout } = useStdout()
-  const termWidth = stdout.columns ?? 100
-  const [isActing, setIsActing] = useState(false)
-
-  const {
-    currentIndex,
-    mode,
-    replyInput,
-    replyDraft,
-    statusMessage,
-    setReplyInput,
-    setMode,
-    setStatusMessage,
-    goNext,
-    goPrev,
-    startReply,
-    dismissDraft,
-    handleReply,
-  } = useInteractiveState(items.length, vendor)
-
-  const current = items[currentIndex]
-
-  const handleStatusUpdate = useCallback(
-    async (status: string) => {
-      setIsActing(true)
-      try {
-        await gql<{ updateSuggestion: { suggestionId: string; status: string } }>(
-          UPDATE_SUGGESTION_MUTATION,
-          { suggestionId: current.suggestionId, status },
-        )
-        setStatusMessage(`✓ marked as ${status.toLowerCase()}`)
-      } catch (err) {
-        setStatusMessage(`Error: ${err instanceof Error ? err.message : String(err)}`)
-      } finally {
-        setIsActing(false)
-      }
-    },
-    [current.suggestionId, setStatusMessage],
-  )
-
-  useInput(
-    (input, key) => {
-      if (isActing || mode === 'reply-loading') return
-
-      if (mode === 'reply-input') {
-        if (key.return) {
-          handleReply(current.tweet.text, replyInput)
-        } else if (key.escape) {
-          setMode('view')
-          setReplyInput('')
-        } else if (key.backspace || key.delete) {
-          setReplyInput((s) => s.slice(0, -1))
-        } else if (input && !key.ctrl && !key.meta) {
-          setReplyInput((s) => s + input)
-        }
-        return
-      }
-
-      if (mode === 'reply-draft') {
-        if (input === 'r') {
-          handleReply(current.tweet.text, '')
-        } else if (key.escape) {
-          dismissDraft()
-        }
-        return
-      }
-
-      // view mode
-      if (input === 'n' || key.rightArrow || input === ' ') {
-        goNext()
-      } else if (input === 'p' || key.leftArrow) {
-        goPrev()
-      } else if (input === 'r') {
-        startReply()
-      } else if (input === 'a') {
-        setStatusMessage('analyze — coming soon')
-      } else if (input === 'q') {
-        process.exit(0)
-      } else if (INBOX_STATUS_KEYS[input]) {
-        handleStatusUpdate(INBOX_STATUS_KEYS[input])
-      }
-    },
-    { isActive: !isActing && mode !== 'reply-loading' },
-  )
-
-  return (
-    <Box flexDirection="column">
-      <Box marginBottom={1}>
-        <Text dimColor>
-          {'  '}
-          {currentIndex + 1} / {items.length}{'  ·  '}inbox --interactive
-        </Text>
-      </Box>
-
-      <SuggestionCard item={current} termWidth={termWidth} />
-
-      {mode === 'reply-draft' && (
-        <Box flexDirection="column" marginTop={1}>
-          <Divider width={termWidth} />
-          <Box marginTop={1} flexDirection="column">
-            <Text dimColor>Draft reply:</Text>
-            <Box marginTop={1} paddingLeft={2} width={Math.min(termWidth, 80)}>
-              <Text wrap="wrap">{replyDraft}</Text>
-            </Box>
-          </Box>
-        </Box>
-      )}
-
-      {statusMessage && (
-        <Box marginTop={1}>
-          <Text color="green">{statusMessage}</Text>
-        </Box>
-      )}
+      <TweetCard
+        item={{ score: current.score, matchedKeywords: current.matchedKeywords, tweet: current.tweet }}
+        termWidth={termWidth}
+        cardWidth={cardWidth}
+        isLast={true}
+      />
 
       <Box flexDirection="column" marginTop={1}>
         <Divider width={termWidth} />
-        {isActing ? (
-          <Box marginTop={1}>
-            <Spinner label="Updating..." />
-          </Box>
-        ) : mode === 'reply-input' ? (
-          <Box marginTop={1}>
-            <Text dimColor>Angle (Enter to auto-generate, Esc to cancel): </Text>
-            <Text>{replyInput}</Text>
-            <Text color="cyan">█</Text>
-          </Box>
-        ) : mode === 'reply-loading' ? (
-          <Box marginTop={1}>
-            <Spinner label="Generating reply..." />
-          </Box>
-        ) : mode === 'reply-draft' ? (
-          <Box marginTop={1}>
-            <Text dimColor>[r] new draft  [Esc] dismiss</Text>
-          </Box>
-        ) : (
-          <Box marginTop={1}>
-            <Text dimColor>[n]ext  [p]rev  [r]eply  [a]nalyze  [R]ead  [S]kip  [L]ater  [A]rchive  [q]uit</Text>
-          </Box>
-        )}
+        <Box marginTop={1} gap={3}>
+          {canTriage ? (
+            <>
+              <Text dimColor><Text color="white">space</Text> skip</Text>
+              <Text dimColor><Text color="white">a</Text> archive</Text>
+              <Text dimColor><Text color="white">l</Text> later</Text>
+              <Text dimColor><Text color="white">o</Text> open</Text>
+              <Text dimColor><Text color="white">q</Text> quit</Text>
+            </>
+          ) : (
+            <>
+              <Text dimColor><Text color="white">space</Text> next</Text>
+              <Text dimColor><Text color="white">o</Text> open</Text>
+              <Text dimColor><Text color="white">q</Text> quit</Text>
+            </>
+          )}
+        </Box>
       </Box>
     </Box>
   )
+}
+
+// ─── Legacy aliases ───────────────────────────────────────────────────────────
+// Kept for any remaining references — both now delegate to TriageSession
+
+export type { TriageItem as FeedItem }
+
+export function InteractiveFeedSession({ items }: { items: TriageItem[]; vendor?: string }) {
+  return <TriageSession items={items} />
+}
+
+export function InteractiveInboxSession({ items }: { items: any[]; vendor?: string }) {
+  return <TriageSession items={items} />
 }

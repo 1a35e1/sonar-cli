@@ -1,6 +1,6 @@
 import React from 'react'
 import { Box, Text } from 'ink'
-import type { Interest } from '../commands/interests/index.js'
+import type { Interest } from '../commands/topics/index.js'
 
 interface InterestCardProps {
   interest: Interest
