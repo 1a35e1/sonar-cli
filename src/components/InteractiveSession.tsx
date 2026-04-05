@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { Box, Text, useInput, useStdout } from 'ink'
 import { Spinner } from './Spinner.js'
-import { TweetCard } from '../commands/feed.js'
+import { TweetCard } from './TweetCard.js'
 import { gql } from '../lib/client.js'
 import { generateReply } from '../lib/ai.js'
 import { getFeedWidth } from '../lib/config.js'
