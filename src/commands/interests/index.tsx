@@ -15,8 +15,6 @@ export interface Interest {
   id: string
   name: string
   description: string | null
-  keywords: string[] | null
-  relatedTopics: string[] | null
   version: number
   createdAt: string
   updatedAt: string
@@ -24,12 +22,10 @@ export interface Interest {
 
 const QUERY = `
   query Interests {
-    projects {
+    topics {
       id: nanoId
       name
       description
-      keywords
-      relatedTopics
       version
       createdAt
       updatedAt
@@ -46,14 +42,14 @@ export default function Interests({ options: flags }: Props) {
   useEffect(() => {
     async function run() {
       try {
-        const result = await gql<{ projects: Interest[] }>(QUERY)
+        const result = await gql<{ topics: Interest[] }>(QUERY)
 
         if (flags.json) {
-          process.stdout.write(JSON.stringify(result.projects, null, 2) + '\n')
+          process.stdout.write(JSON.stringify(result.topics, null, 2) + '\n')
           process.exit(0)
         }
 
-        setData(result.projects)
+        setData(result.topics)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       }
@@ -72,14 +68,12 @@ export default function Interests({ options: flags }: Props) {
   if (data.length === 0) {
     return (
       <Box flexDirection="column" gap={1}>
-        <Text>No interests found. Create one from a prompt:</Text>
+        <Text>No interests found. Add one:</Text>
         <Box flexDirection="column">
-          <Text dimColor>  sonar interests create --from-prompt "I want to follow the AI agents ecosystem"</Text>
-          <Text dimColor>  sonar interests create --from-prompt "Rust and systems programming" --vendor anthropic</Text>
-          <Text dimColor>  sonar interests create --from-prompt "DeFi protocols and on-chain finance"</Text>
-          <Text dimColor>  sonar interests create --from-prompt "Climate tech and carbon markets"</Text>
+          <Text dimColor>  sonar interests add --name "AI agents"</Text>
+          <Text dimColor>  sonar interests add --name "Rust and systems programming"</Text>
+          <Text dimColor>  sonar interests add --name "DeFi protocols"</Text>
         </Box>
-        <Text dimColor>Or manually: sonar interests create --name "My Interest" --keywords "kw1,kw2" --topics "topic1"</Text>
       </Box>
     )
   }
@@ -100,7 +94,7 @@ export default function Interests({ options: flags }: Props) {
         />
       ))}
 
-      <Text dimColor>tip: --json for raw output · match: sonar interests match --days 3 · update: sonar interests update --id &lt;id&gt; --from-prompt "..."</Text>
+      <Text dimColor>tip: --json for raw output · update: sonar interests edit --id &lt;id&gt; --name "new name"</Text>
     </Box>
   )
 }

@@ -29,20 +29,6 @@ export function InterestCard({ interest, termWidth, isLast }: InterestCardProps)
         </Box>
       )}
 
-      {interest.keywords && interest.keywords.length > 0 && (
-        <Box marginLeft={2}>
-          <Text dimColor>keywords  </Text>
-          <Text color="yellow">{interest.keywords.join('  ')}</Text>
-        </Box>
-      )}
-
-      {interest.relatedTopics && interest.relatedTopics.length > 0 && (
-        <Box marginLeft={2}>
-          <Text dimColor>topics    </Text>
-          <Text>{interest.relatedTopics.join('  ')}</Text>
-        </Box>
-      )}
-
       {!isLast && (
         <Box marginTop={1}>
           <Text dimColor>{'─'.repeat(Math.min(termWidth - 2, 72))}</Text>
