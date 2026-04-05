@@ -3,10 +3,10 @@ import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
 import { Spinner } from '../../components/Spinner.js'
-import type { Interest } from './index.js'
+import type { Topic } from './index.js'
 
 export const options = zod.object({
-  id: zod.string().describe('Interest ID to update'),
+  id: zod.string().describe('Topic ID to update'),
   name: zod.string().optional().describe('New name'),
   description: zod.string().optional().describe('New description'),
   json: zod.boolean().default(false).describe('Raw JSON output'),
@@ -15,7 +15,7 @@ export const options = zod.object({
 type Props = { options: zod.infer<typeof options> }
 
 const QUERY = `
-  query Interests {
+  query Topics {
     topics {
       id: nanoId
       name
@@ -48,15 +48,15 @@ const UPDATE_MUTATION = `
   }
 `
 
-async function fetchById(id: string): Promise<Interest> {
-  const result = await gql<{ topics: Interest[] }>(QUERY)
+async function fetchById(id: string): Promise<Topic> {
+  const result = await gql<{ topics: Topic[] }>(QUERY)
   const found = result.topics.find((p) => p.id === id)
-  if (!found) throw new Error(`Interest with id "${id}" not found`)
+  if (!found) throw new Error(`Topic with id "${id}" not found`)
   return found
 }
 
-export default function InterestsUpdate({ options: flags }: Props) {
-  const [data, setData] = useState<Interest | null>(null)
+export default function TopicEdit({ options: flags }: Props) {
+  const [data, setData] = useState<Topic | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function InterestsUpdate({ options: flags }: Props) {
           if (!description) description = existing.description ?? null
         }
 
-        const result = await gql<{ createOrUpdateTopic: Interest }>(UPDATE_MUTATION, {
+        const result = await gql<{ createOrUpdateTopic: Topic }>(UPDATE_MUTATION, {
           nanoId: flags.id,
           name,
           description,
@@ -103,7 +103,7 @@ export default function InterestsUpdate({ options: flags }: Props) {
 
   if (!data) {
     if (flags.json) return <></>
-    return <Spinner label="Updating interest..." />
+    return <Spinner label="Updating topic..." />
   }
 
   return (

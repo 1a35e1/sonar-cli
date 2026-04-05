@@ -3,10 +3,10 @@ import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
 import { Spinner } from '../../components/Spinner.js'
-import type { Interest } from './index.js'
+import type { Topic } from './index.js'
 
 export const args = zod.tuple([
-  zod.string().describe('Interest name or phrase'),
+  zod.string().describe('Topic name or phrase'),
 ])
 
 export const options = zod.object({
@@ -35,8 +35,8 @@ const CREATE_MUTATION = `
   }
 `
 
-export default function InterestsAdd({ args: [name], options: flags }: Props) {
-  const [data, setData] = useState<Interest | null>(null)
+export default function TopicsAdd({ args: [name], options: flags }: Props) {
+  const [data, setData] = useState<Topic | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function InterestsAdd({ args: [name], options: flags }: Props) {
   useEffect(() => {
     async function run() {
       try {
-        const result = await gql<{ createOrUpdateTopic: Interest }>(CREATE_MUTATION, {
+        const result = await gql<{ createOrUpdateTopic: Topic }>(CREATE_MUTATION, {
           name,
           description: flags.description ?? null,
         })
@@ -73,7 +73,7 @@ export default function InterestsAdd({ args: [name], options: flags }: Props) {
 
   if (!data) {
     if (flags.json) return <></>
-    return <Spinner label="Creating interest (expanding description via AI)..." />
+    return <Spinner label="Creating topic (expanding via AI)..." />
   }
 
   return (
@@ -86,7 +86,7 @@ export default function InterestsAdd({ args: [name], options: flags }: Props) {
       <Box marginTop={1}>
         <Text dimColor>tip  run </Text>
         <Text color="cyan">sonar refresh</Text>
-        <Text dimColor> to match this interest against recent tweets</Text>
+        <Text dimColor> to match this topic against recent tweets</Text>
       </Box>
     </Box>
   )

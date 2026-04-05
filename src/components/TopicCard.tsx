@@ -1,15 +1,15 @@
 import React from 'react'
 import { Box, Text } from 'ink'
-import type { Interest } from '../commands/topics/index.js'
+import type { Topic } from '../commands/topics/index.js'
 
-interface InterestCardProps {
-  interest: Interest
+interface TopicCardProps {
+  topic: Topic
   termWidth: number
   isLast: boolean
 }
 
-export function InterestCard({ interest, termWidth, isLast }: InterestCardProps) {
-  const updatedAt = new Date(interest.updatedAt).toLocaleDateString('en-US', {
+export function TopicCard({ topic, termWidth, isLast }: TopicCardProps) {
+  const updatedAt = new Date(topic.updatedAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -18,14 +18,14 @@ export function InterestCard({ interest, termWidth, isLast }: InterestCardProps)
   return (
     <Box flexDirection="column" marginBottom={isLast ? 0 : 1} width={termWidth}>
       <Box>
-        <Text color="cyan" bold>{interest.name}</Text>
-        <Text dimColor>  v{interest.version} · {interest.id} · {updatedAt}</Text>
+        <Text color="cyan" bold>{topic.name}</Text>
+        <Text dimColor>  v{topic.version} · {topic.id} · {updatedAt}</Text>
       </Box>
 
-      {interest.description && (
+      {topic.description && (
         <Box>
           <Text color="gray">{'└'} </Text>
-          <Text wrap="wrap">{interest.description}</Text>
+          <Text wrap="wrap">{topic.description}</Text>
         </Box>
       )}
 
