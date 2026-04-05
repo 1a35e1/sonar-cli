@@ -5,13 +5,16 @@ import { gql } from '../../lib/client.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Interest } from './index.js'
 
+export const args = zod.tuple([
+  zod.string().describe('Interest name or phrase'),
+])
+
 export const options = zod.object({
-  name: zod.string().describe('Interest name or phrase (e.g. "AI agents")'),
   description: zod.string().optional().describe('Optional description (auto-generated if omitted)'),
   json: zod.boolean().default(false).describe('Raw JSON output'),
 })
 
-type Props = { options: zod.infer<typeof options> }
+type Props = { args: zod.infer<typeof args>; options: zod.infer<typeof options> }
 
 const CREATE_MUTATION = `
   mutation CreateOrUpdateTopic(
@@ -32,7 +35,7 @@ const CREATE_MUTATION = `
   }
 `
 
-export default function InterestsAdd({ options: flags }: Props) {
+export default function InterestsAdd({ args: [name], options: flags }: Props) {
   const [data, setData] = useState<Interest | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +49,7 @@ export default function InterestsAdd({ options: flags }: Props) {
     async function run() {
       try {
         const result = await gql<{ createOrUpdateTopic: Interest }>(CREATE_MUTATION, {
-          name: flags.name,
+          name,
           description: flags.description ?? null,
         })
 
