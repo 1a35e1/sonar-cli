@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Box, Text, useStdout } from 'ink'
+import { Banner } from '../components/Banner.js'
 import { Spinner } from '../components/Spinner.js'
 import { TriageSession } from '../components/InteractiveSession.js'
 import type { TriageItem } from '../components/InteractiveSession.js'
@@ -168,10 +169,12 @@ export default function Sonar({ options: flags, args: positionalArgs }: Props) {
   if (noInterests) {
     return (
       <Box flexDirection="column" gap={1}>
-        <Text bold>Welcome to Sonar</Text>
-        <Text dimColor>No interests yet. Add one to get started:</Text>
-        <Text color="cyan">  sonar interests add --prompt "I want to follow the AI agents ecosystem"</Text>
-        <Text color="cyan">  sonar interests add --prompt "Rust and systems programming"</Text>
+        <Banner />
+        <Text dimColor>No topics yet. Add one to get started:</Text>
+        <Box flexDirection="column" gap={0}>
+          <Text color="cyan">  sonar topics add "AI agents"</Text>
+          <Text color="cyan">  sonar topics add "Rust and systems programming"</Text>
+        </Box>
       </Box>
     )
   }
