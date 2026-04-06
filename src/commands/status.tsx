@@ -236,10 +236,10 @@ export default function Status({ options: flags }: Props) {
             </Text>
           ))}
           {pipeline.current !== '' && (
-            <Text>
-              <Text color="yellow">  ▸ </Text>
-              <Text>{pipeline.current}</Text>
-            </Text>
+            <Box>
+              <Text>  </Text>
+              <Spinner label={pipeline.current} />
+            </Box>
           )}
         </Box>
       )}
