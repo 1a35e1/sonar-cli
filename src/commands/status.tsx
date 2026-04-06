@@ -28,9 +28,20 @@ interface SuggestionCounts {
   inbox: number; later: number; archived: number; total: number
 }
 
+interface PipelineStep { label: string; duration: number }
+interface PipelineProgress {
+  batch_id: string
+  username: string
+  status: 'running' | 'complete' | 'failed'
+  current: string
+  steps: PipelineStep[]
+  total_duration: number
+}
+
 interface StatusData {
   me: Account
   queues: Record<string, QueueCounts>
+  pipeline: PipelineProgress | null
   usage: Usage | null
   suggestionCounts: SuggestionCounts
 }
@@ -99,7 +110,7 @@ export default function Status({ options: flags }: Props) {
           process.exit(0)
         }
 
-        setData({ me: gqlRes.me, queues: status.queues, usage: gqlRes.usage, suggestionCounts: gqlRes.suggestionCounts })
+        setData({ me: gqlRes.me, queues: status.queues, pipeline: status.pipeline ?? null, usage: gqlRes.usage, suggestionCounts: gqlRes.suggestionCounts })
         setError(null)
       } catch (err) {
         clearTimeout(timer)
@@ -144,9 +155,9 @@ export default function Status({ options: flags }: Props) {
   if (error) return <Text color="red">Error: {error}</Text>
   if (!data) return <Spinner label="Loading..." />
 
-  const { me, queues, usage, suggestionCounts } = data
+  const { me, queues, pipeline, usage, suggestionCounts } = data
   const entries = Object.entries(queues)
-  const hasActivity = entries.length > 0 || me.pendingEmbeddings > 0
+  const hasActivity = entries.length > 0 || me.pendingEmbeddings > 0 || (pipeline !== null && pipeline.status === 'running')
 
   const embedded = me.indexedTweets - me.pendingEmbeddings
   const embedPct = me.indexedTweets > 0 ? Math.round((embedded / me.indexedTweets) * 100) : 100
@@ -213,23 +224,72 @@ export default function Status({ options: flags }: Props) {
         </Box>
       </Box>
 
-      {/* Queues */}
-      {hasActivity && (
+      {/* Pipeline progress */}
+      {pipeline && pipeline.status === 'running' && (
         <Box flexDirection="column">
-          <Text bold dimColor>QUEUES</Text>
-          {me.pendingEmbeddings > 0 && (
+          <Text bold dimColor>PIPELINE</Text>
+          {pipeline.steps.map((step, i) => (
+            <Text key={i}>
+              <Text color="green">  ✓ </Text>
+              <Text>{step.label}</Text>
+              <Text dimColor> ({step.duration}s)</Text>
+            </Text>
+          ))}
+          {pipeline.current !== '' && (
             <Text>
-              <Text dimColor>  {'Embeddings'.padEnd(16)}</Text>
-              <Text color="yellow">● {me.pendingEmbeddings.toLocaleString()} pending</Text>
+              <Text color="yellow">  ▸ </Text>
+              <Text>{pipeline.current}</Text>
             </Text>
           )}
-          {entries.map(([name, counts]) => (
+        </Box>
+      )}
+
+      {pipeline && pipeline.status === 'complete' && (
+        <Box flexDirection="column">
+          <Text bold dimColor>PIPELINE</Text>
+          {pipeline.steps.map((step, i) => (
+            <Text key={i}>
+              <Text color="green">  ✓ </Text>
+              <Text>{step.label}</Text>
+              <Text dimColor> ({step.duration}s)</Text>
+            </Text>
+          ))}
+          <Text color="green">  ✓ Complete ({pipeline.total_duration}s)</Text>
+        </Box>
+      )}
+
+      {pipeline && pipeline.status === 'failed' && (
+        <Box flexDirection="column">
+          <Text bold dimColor>PIPELINE</Text>
+          {pipeline.steps.map((step, i) => (
+            <Text key={i}>
+              <Text color="green">  ✓ </Text>
+              <Text>{step.label}</Text>
+              <Text dimColor> ({step.duration}s)</Text>
+            </Text>
+          ))}
+          <Text color="red">  ✗ Failed</Text>
+        </Box>
+      )}
+
+      {/* Embeddings */}
+      {me.pendingEmbeddings > 0 && !(pipeline && pipeline.status === 'running') && (
+        <Text>
+          <Text dimColor>{'Embeddings'.padEnd(16)}</Text>
+          <Text color="yellow">● {me.pendingEmbeddings.toLocaleString()} pending</Text>
+        </Text>
+      )}
+
+      {/* Queues (non-pipeline) */}
+      {entries.filter(([name]) => name !== 'default').length > 0 && !(pipeline && pipeline.status === 'running') && (
+        <Box flexDirection="column">
+          <Text bold dimColor>QUEUES</Text>
+          {entries.filter(([name]) => name !== 'default').map(([name, counts]) => (
             <Text key={name}>
               <Text dimColor>  {(QUEUE_LABELS[name] ?? name).padEnd(16)}</Text>
               {counts.running > 0 && <Text color="green">▶ {counts.running} running  </Text>}
               {counts.queued > 0 && <Text color="yellow">● {counts.queued} queued  </Text>}
               {(counts.deferred ?? 0) > 0 && <Text color="blue">◆ {counts.deferred} pending  </Text>}
-              {counts.running === 0 && counts.queued === 0 && (counts.deferred ?? 0) === 0 && <Text dimColor>idle</Text>}
             </Text>
           ))}
         </Box>
