@@ -46,20 +46,41 @@ function Divider({ width }: { width: number }) {
 
 interface TriageSessionProps {
   items: TriageItem[]
+  total?: number
+  fetchMore?: (offset: number) => Promise<TriageItem[]>
 }
 
 type ActionLabel = 'archived' | 'saved for later' | 'skipped' | null
 
-export function TriageSession({ items }: TriageSessionProps) {
+export function TriageSession({ items: initialItems, total: initialTotal, fetchMore }: TriageSessionProps) {
   const { stdout } = useStdout()
   const termWidth = stdout.columns ?? 100
   const cardWidth = getFeedWidth()
 
+  const [items, setItems] = useState(initialItems)
+  const [total, setTotal] = useState(initialTotal ?? initialItems.length)
   const [index, setIndex] = useState(0)
   const [lastAction, setLastAction] = useState<ActionLabel>(null)
   const [acting, setActing] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const done = index >= items.length
+  // Fetch next page when 3 items from the end
+  useEffect(() => {
+    if (!fetchMore || loading) return
+    if (index >= items.length - 3 && items.length < total) {
+      setLoading(true)
+      fetchMore(items.length)
+        .then(more => {
+          if (more.length > 0) {
+            setItems(prev => [...prev, ...more])
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }
+  }, [index, items.length, total, loading])
+
+  const done = index >= items.length && items.length >= total
   const current = items[index]
 
   // Fire mutation in background, advance immediately
@@ -122,7 +143,7 @@ export function TriageSession({ items }: TriageSessionProps) {
   return (
     <Box flexDirection="column">
       <Box marginBottom={1} gap={3}>
-        <Text dimColor>{index + 1} / {items.length}</Text>
+        <Text dimColor>{index + 1} / {total}</Text>
         {lastAction && <Text color="green">✓ {lastAction}</Text>}
       </Box>
 

@@ -56,14 +56,15 @@ const FEED_QUERY = `
 `
 
 const INBOX_QUERY = `
-  query Inbox($status: SuggestionStatus, $limit: Int) {
-    suggestions(status: $status, limit: $limit) {
+  query Inbox($status: SuggestionStatus, $limit: Int, $offset: Int) {
+    suggestions(status: $status, limit: $limit, offset: $offset) {
       suggestionId score
       tweet {
         id xid text createdAt
         user { displayName username }
       }
     }
+    suggestionCounts { inbox }
   }
 `
 
@@ -71,6 +72,7 @@ const HAS_INTERESTS_QUERY = `query HasInterests { topics { id: nanoId } }`
 
 export default function Sonar({ options: flags, args: positionalArgs }: Props) {
   const [items, setItems] = useState<UnifiedItem[] | null>(null)
+  const [total, setTotal] = useState(0)
   const [noInterests, setNoInterests] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -106,8 +108,10 @@ export default function Sonar({ options: flags, args: positionalArgs }: Props) {
             limit,
             kind: flags.kind ?? 'default',
           }),
-          gql<{ suggestions: SuggestionItem[] }>(INBOX_QUERY, { status: 'INBOX', limit }),
+          gql<{ suggestions: SuggestionItem[]; suggestionCounts: { inbox: number } }>(INBOX_QUERY, { status: 'INBOX', limit, offset: 0 }),
         ])
+
+        const inboxTotal = inboxRes.suggestionCounts.inbox
 
         // Merge: deduplicate by xid, suggestions take priority, sort by score
         const seen = new Set<string>()
@@ -157,6 +161,7 @@ export default function Sonar({ options: flags, args: positionalArgs }: Props) {
         }
 
         setItems(merged)
+        setTotal(inboxTotal)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       }
@@ -195,7 +200,30 @@ export default function Sonar({ options: flags, args: positionalArgs }: Props) {
   }
 
   if (flags.interactive) {
-    return <TriageSession items={items} />
+    const pageSize = flags.limit ?? 20
+    const fetchMore = async (offset: number): Promise<UnifiedItem[]> => {
+      const res = await gql<{ suggestions: SuggestionItem[] }>(INBOX_QUERY, {
+        status: 'INBOX', limit: pageSize, offset,
+      })
+      return res.suggestions.map(s => ({
+        key: s.tweet.xid,
+        score: s.score,
+        source: 'suggestion' as const,
+        suggestionId: s.suggestionId,
+        matchedKeywords: [],
+        tweet: {
+          id: s.tweet.id,
+          xid: s.tweet.xid,
+          text: s.tweet.text,
+          createdAt: s.tweet.createdAt,
+          likeCount: 0,
+          retweetCount: 0,
+          replyCount: 0,
+          user: { ...s.tweet.user, followersCount: null, followingCount: null },
+        },
+      }))
+    }
+    return <TriageSession items={items} total={total} fetchMore={fetchMore} />
   }
 
   const kindLabel =
