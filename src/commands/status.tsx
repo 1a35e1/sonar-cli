@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import zod from 'zod'
-import { Box, Text, useApp } from 'ink'
+import { Box, Text, useApp, useInput } from 'ink'
 import { formatDistanceToNow } from 'date-fns'
 import { getToken, getApiUrl } from '../lib/config.js'
 import { gql } from '../lib/client.js'
@@ -120,6 +120,27 @@ export default function Status({ options: flags }: Props) {
   useEffect(() => { if (!flags.watch && data !== null) exit() }, [data])
   useEffect(() => { if (!flags.watch && error !== null) exit(new Error(error)) }, [error])
 
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMsg, setRefreshMsg] = useState<string | null>(null)
+
+  useInput((input, key) => {
+    if (!flags.watch) return
+    if (input === 'r' && !refreshing) {
+      setRefreshing(true)
+      setRefreshMsg(null)
+      gql<{ refresh: boolean }>('mutation Refresh { refresh(days: 1) }')
+        .then(() => {
+          setRefreshMsg('pipeline queued')
+          setRefreshing(false)
+        })
+        .catch((err) => {
+          setRefreshMsg(err instanceof Error ? err.message : String(err))
+          setRefreshing(false)
+        })
+    }
+    if (input === 'q') exit()
+  }, { isActive: flags.watch })
+
   if (error) return <Text color="red">Error: {error}</Text>
   if (!data) return <Spinner label="Loading..." />
 
@@ -130,11 +151,15 @@ export default function Status({ options: flags }: Props) {
   const embedded = me.indexedTweets - me.pendingEmbeddings
   const embedPct = me.indexedTweets > 0 ? Math.round((embedded / me.indexedTweets) * 100) : 100
 
+  const BAR_WIDTH = 20
+  const filledCount = Math.round((embedPct / 100) * BAR_WIDTH)
+  const progressBar = '█'.repeat(filledCount) + '░'.repeat(BAR_WIDTH - filledCount)
+
   return (
     <Box flexDirection="column" gap={1}>
-      {/* Account */}
+      {/* Header */}
       <Box flexDirection="column">
-        <Text bold>@{me.xHandle}</Text>
+        <Text bold color="cyan">@{me.xHandle}</Text>
         <Text dimColor>
           {me.indexedTweets.toLocaleString()} tweets
           {' · '}indexed {timeAgo(me.twitterIndexedAt)}
@@ -142,30 +167,31 @@ export default function Status({ options: flags }: Props) {
         </Text>
       </Box>
 
-      {/* Embeddings progress */}
+      {/* Embeddings progress bar */}
       {me.pendingEmbeddings > 0 && (
         <Box flexDirection="column">
           <Text>
-            <Text dimColor>embeddings: </Text>
-            <Text color="yellow">{embedded.toLocaleString()}/{me.indexedTweets.toLocaleString()}</Text>
-            <Text dimColor> ({embedPct}%)</Text>
+            <Text dimColor>embeddings </Text>
+            <Text color={embedPct === 100 ? 'green' : 'yellow'}>{progressBar}</Text>
+            <Text dimColor> {embedPct}% </Text>
+            <Text dimColor>({embedded.toLocaleString()}/{me.indexedTweets.toLocaleString()})</Text>
           </Text>
         </Box>
       )}
 
-      {/* Usage */}
-      {usage && (
-        <Box flexDirection="column">
+      {/* Usage & Inbox combined */}
+      <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+        {usage && (
           <Box gap={2}>
             <Text><Text dimColor>plan </Text><Text color={usage.plan === 'trial' ? 'yellow' : 'green'}>{usage.plan}</Text></Text>
-            <Text dimColor>·</Text>
+            <Text dimColor>│</Text>
             <Text>
               <Text dimColor>topics </Text>
               <Text color={usage.interests.atLimit ? 'red' : undefined}>
                 {usage.interests.used}{usage.interests.limit !== null ? `/${usage.interests.limit}` : ''}
               </Text>
             </Text>
-            <Text dimColor>·</Text>
+            <Text dimColor>│</Text>
             <Text>
               <Text dimColor>refreshes </Text>
               {usage.suggestionRefreshes.limit !== null ? (
@@ -177,38 +203,47 @@ export default function Status({ options: flags }: Props) {
               )}
             </Text>
           </Box>
+        )}
+        <Box gap={2}>
+          <Text><Text dimColor>inbox </Text><Text color={suggestionCounts.inbox > 0 ? 'green' : undefined}>{suggestionCounts.inbox}</Text></Text>
+          <Text dimColor>│</Text>
+          <Text><Text dimColor>later </Text>{suggestionCounts.later}</Text>
+          <Text dimColor>│</Text>
+          <Text><Text dimColor>archived </Text>{suggestionCounts.archived}</Text>
         </Box>
-      )}
-
-      {/* Inbox */}
-      <Box gap={2}>
-        <Text><Text dimColor>inbox </Text><Text color={suggestionCounts.inbox > 0 ? 'green' : undefined}>{suggestionCounts.inbox}</Text></Text>
-        <Text><Text dimColor>later </Text>{suggestionCounts.later}</Text>
-        <Text><Text dimColor>archived </Text>{suggestionCounts.archived}</Text>
       </Box>
 
       {/* Queues */}
       {hasActivity && (
         <Box flexDirection="column">
-          <Text bold color="cyan">Queues</Text>
+          <Text bold dimColor>QUEUES</Text>
           {me.pendingEmbeddings > 0 && (
             <Text>
-              <Text dimColor>{'  Embeddings'.padEnd(20)}</Text>
-              <Text color="yellow">{me.pendingEmbeddings.toLocaleString()} pending</Text>
+              <Text dimColor>  {'Embeddings'.padEnd(16)}</Text>
+              <Text color="yellow">● {me.pendingEmbeddings.toLocaleString()} pending</Text>
             </Text>
           )}
           {entries.map(([name, counts]) => (
             <Text key={name}>
-              <Text dimColor>{'  ' + (QUEUE_LABELS[name] ?? name).padEnd(18)}</Text>
-              {counts.running > 0 && <Text color="green">{counts.running} running  </Text>}
-              {counts.queued > 0 && <Text color="yellow">{counts.queued} queued</Text>}
+              <Text dimColor>  {(QUEUE_LABELS[name] ?? name).padEnd(16)}</Text>
+              {counts.running > 0 && <Text color="green">▶ {counts.running} running  </Text>}
+              {counts.queued > 0 && <Text color="yellow">● {counts.queued} queued</Text>}
+              {counts.running === 0 && counts.queued === 0 && <Text dimColor>idle</Text>}
             </Text>
           ))}
         </Box>
       )}
 
       {!hasActivity && (
-        <Text color="green">Idle · <Text color="cyan">sonar refresh</Text> to trigger pipeline</Text>
+        <Text dimColor>idle — run <Text color="cyan">sonar refresh</Text> to trigger pipeline</Text>
+      )}
+
+      {flags.watch && (
+        <Box gap={2}>
+          {refreshing && <Text color="yellow">refreshing...</Text>}
+          {refreshMsg && <Text color="green">{refreshMsg}</Text>}
+          <Text dimColor>press <Text color="cyan">r</Text> to refresh · <Text color="cyan">q</Text> to quit</Text>
+        </Box>
       )}
     </Box>
   )
