@@ -15,23 +15,28 @@ export function TopicCard({ topic, termWidth, isLast }: TopicCardProps) {
     year: 'numeric',
   })
 
+  // Truncate description to ~2 lines
+  const maxDescLen = Math.min(termWidth, 80) * 2
+  const desc = topic.description
+    ? topic.description.length > maxDescLen
+      ? topic.description.slice(0, maxDescLen).trimEnd() + '...'
+      : topic.description
+    : null
+
   return (
-    <Box flexDirection="column" marginBottom={isLast ? 0 : 1} width={termWidth}>
-      <Box>
+    <Box flexDirection="column" marginBottom={isLast ? 0 : 0}>
+      <Box gap={1}>
         <Text color="cyan" bold>{topic.name}</Text>
-        <Text dimColor>  v{topic.version} · {topic.id} · {updatedAt}</Text>
+        <Text dimColor>v{topic.version}</Text>
+        <Text dimColor>·</Text>
+        <Text dimColor>{topic.id}</Text>
+        <Text dimColor>·</Text>
+        <Text dimColor>{updatedAt}</Text>
       </Box>
 
-      {topic.description && (
-        <Box>
-          <Text color="gray">{'└'} </Text>
-          <Text wrap="wrap">{topic.description}</Text>
-        </Box>
-      )}
-
-      {!isLast && (
-        <Box marginTop={1}>
-          <Text dimColor>{'─'.repeat(Math.min(termWidth - 2, 72))}</Text>
+      {desc && (
+        <Box paddingLeft={2}>
+          <Text dimColor wrap="wrap">{desc}</Text>
         </Box>
       )}
     </Box>
