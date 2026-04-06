@@ -14,7 +14,7 @@ export const options = zod.object({
 
 type Props = { options: zod.infer<typeof options> }
 
-interface QueueCounts { queued: number; running: number }
+interface QueueCounts { queued: number; running: number; deferred?: number }
 interface DimensionUsage { used: number; limit: number | null; atLimit: boolean }
 interface SuggestionRefreshUsage { used: number; limit: number | null; atLimit: boolean; resetsAt: string | null }
 interface Usage {
@@ -227,8 +227,9 @@ export default function Status({ options: flags }: Props) {
             <Text key={name}>
               <Text dimColor>  {(QUEUE_LABELS[name] ?? name).padEnd(16)}</Text>
               {counts.running > 0 && <Text color="green">▶ {counts.running} running  </Text>}
-              {counts.queued > 0 && <Text color="yellow">● {counts.queued} queued</Text>}
-              {counts.running === 0 && counts.queued === 0 && <Text dimColor>idle</Text>}
+              {counts.queued > 0 && <Text color="yellow">● {counts.queued} queued  </Text>}
+              {(counts.deferred ?? 0) > 0 && <Text color="blue">◆ {counts.deferred} pending  </Text>}
+              {counts.running === 0 && counts.queued === 0 && (counts.deferred ?? 0) === 0 && <Text dimColor>idle</Text>}
             </Text>
           ))}
         </Box>
