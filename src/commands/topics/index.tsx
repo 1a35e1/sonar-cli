@@ -94,7 +94,7 @@ export default function Topics({ options: flags }: Props) {
         />
       ))}
 
-      <Text dimColor>tip: --json for raw output · update: sonar topics edit --id &lt;id&gt; --name "new name"</Text>
+      <Text dimColor>view: sonar topics view &lt;id&gt; · edit: sonar topics edit &lt;id&gt; --name "new name"</Text>
     </Box>
   )
 }

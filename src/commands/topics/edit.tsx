@@ -5,14 +5,17 @@ import { gql } from '../../lib/client.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Topic } from './index.js'
 
+export const args = zod.tuple([
+  zod.string().describe('Topic ID'),
+])
+
 export const options = zod.object({
-  id: zod.string().describe('Topic ID to update'),
   name: zod.string().optional().describe('New name'),
   description: zod.string().optional().describe('New description'),
   json: zod.boolean().default(false).describe('Raw JSON output'),
 })
 
-type Props = { options: zod.infer<typeof options> }
+type Props = { args: zod.infer<typeof args>; options: zod.infer<typeof options> }
 
 const QUERY = `
   query Topics {
@@ -51,11 +54,11 @@ const UPDATE_MUTATION = `
 async function fetchById(id: string): Promise<Topic> {
   const result = await gql<{ topics: Topic[] }>(QUERY)
   const found = result.topics.find((p) => p.id === id)
-  if (!found) throw new Error(`Topic with id "${id}" not found`)
+  if (!found) throw new Error(`Topic "${id}" not found. Run: sonar topics`)
   return found
 }
 
-export default function TopicEdit({ options: flags }: Props) {
+export default function TopicEdit({ args: [id], options: flags }: Props) {
   const [data, setData] = useState<Topic | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,17 +71,12 @@ export default function TopicEdit({ options: flags }: Props) {
   useEffect(() => {
     async function run() {
       try {
-        let name = flags.name
-        let description = flags.description ?? null
-
-        if (!name) {
-          const existing = await fetchById(flags.id)
-          name = existing.name
-          if (!description) description = existing.description ?? null
-        }
+        const existing = await fetchById(id)
+        const name = flags.name ?? existing.name
+        const description = flags.description ?? existing.description ?? null
 
         const result = await gql<{ createOrUpdateTopic: Topic }>(UPDATE_MUTATION, {
-          nanoId: flags.id,
+          nanoId: id,
           name,
           description,
         })
@@ -108,11 +106,11 @@ export default function TopicEdit({ options: flags }: Props) {
 
   return (
     <Box flexDirection="column" gap={0}>
-      <Box gap={2}>
+      <Box gap={1}>
         <Text bold color="cyan">{data.name}</Text>
         <Text dimColor>v{data.version} · {data.id} · updated</Text>
       </Box>
-      {data.description && <Text dimColor>{data.description}</Text>}
+      {data.description && <Text dimColor>{data.description.slice(0, 160)}...</Text>}
     </Box>
   )
 }
