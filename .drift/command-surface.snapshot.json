@@ -1,0 +1,29 @@
+{
+  "source": "src/commands/**/*.tsx",
+  "commandCount": 23,
+  "commands": [
+    "sonar",
+    "sonar archive",
+    "sonar config",
+    "sonar config data backup",
+    "sonar config data download",
+    "sonar config data path",
+    "sonar config data restore",
+    "sonar config data sql",
+    "sonar config data sync",
+    "sonar config data verify",
+    "sonar config env",
+    "sonar config nuke",
+    "sonar config set",
+    "sonar config setup",
+    "sonar config skill",
+    "sonar later",
+    "sonar refresh",
+    "sonar skip",
+    "sonar status",
+    "sonar sync bookmarks",
+    "sonar topics",
+    "sonar topics add",
+    "sonar topics edit"
+  ]
+}

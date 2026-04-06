@@ -23,6 +23,12 @@
     "sonar": "tsx src/cli.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "drift:schema:check": "node scripts/check-schema-drift.mjs",
+    "drift:surface:update": "node scripts/update-command-surface-snapshot.mjs",
+    "drift:surface:check": "node scripts/check-command-surface-snapshot.mjs",
+    "drift:docs:check": "node scripts/check-doc-command-parity.mjs",
+    "drift:data:check": "node scripts/check-data-compat.mjs",
+    "drift:check": "pnpm drift:surface:check && pnpm drift:docs:check && pnpm drift:data:check && pnpm drift:schema:check",
     "prepublishOnly": "tsc"
   },
   "dependencies": {

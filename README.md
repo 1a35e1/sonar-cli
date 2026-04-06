@@ -321,6 +321,21 @@ sonar sync                           # sync data to local SQLite
 
 ---
 
+## Drift Prevention Checks
+
+```bash
+# Run all drift checks (surface/docs/data/schema)
+pnpm drift:check
+
+# Refresh committed command snapshot after intentional command changes
+pnpm drift:surface:update
+```
+
+`drift:schema:check` validates GraphQL documents against the live schema.
+Locally, it skips when offline; in CI (`CI=true`) it is enforced.
+
+---
+
 ## Troubleshooting
 
 **`No token found. Set SONAR_API_KEY or run: sonar config setup`**

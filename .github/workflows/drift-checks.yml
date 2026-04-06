@@ -1,0 +1,40 @@
+name: Drift Checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/**
+      - phase-**
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run drift checks
+        env:
+          CI: "true"
+          SONAR_API_URL: https://api.sonar.8640p.info/graphql
+        run: pnpm drift:check
