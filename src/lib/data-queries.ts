@@ -34,8 +34,9 @@ export interface Interest {
   id: string
   name: string
   description: string | null
-  keywords: string[] | null
-  relatedTopics: string[] | null
+  // These fields were removed from backend topics; keep optional for backward compatibility.
+  keywords?: string[] | null
+  relatedTopics?: string[] | null
   createdAt: string
   updatedAt: string
 }
@@ -96,8 +97,6 @@ export const INTERESTS_QUERY = `
       id: nanoId
       name
       description
-      keywords
-      relatedTopics
       createdAt
       updatedAt
     }

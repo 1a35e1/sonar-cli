@@ -104,8 +104,8 @@ export function upsertInterest(db: Database.Database, interest: {
   id: string
   name: string
   description: string | null
-  keywords: string[] | null
-  relatedTopics: string[] | null
+  keywords?: string[] | null
+  relatedTopics?: string[] | null
   createdAt: string
   updatedAt: string
 }): void {

@@ -1,9 +1,15 @@
 import type { CodegenConfig } from '@graphql-codegen/cli'
 
+const defaultSchemaUrl = 'https://api.sonar.8640p.info/graphql'
+const rawSchemaUrl = process.env.SONAR_API_URL ?? defaultSchemaUrl
+const schemaUrl = rawSchemaUrl.endsWith('/graphql')
+  ? rawSchemaUrl
+  : `${rawSchemaUrl.replace(/\/$/, '')}/graphql`
+
 // https://the-guild.dev/graphql/codegen/plugins/typescript/typescript-graphql-request
 const config: CodegenConfig = {
   overwrite: true,
-  schema: 'https://api.sonar.8640p.info/graphql',
+  schema: schemaUrl,
   documents: ['src/**/*'],
   hooks: {
     afterAllFileWrite: ['pnpm biome check --write src/types/sonar.ts --linter-enabled=false'],
