@@ -33,21 +33,19 @@ export SONAR_API_KEY=snr_xxxxx
 sonar config setup key=<YOUR_API_KEY>
 ```
 
-View your account to ensure evrything works.
+View your account status:
 
 ```sh
-sonar account
+sonar status
 ```
 
-Ingest your first `tweets` and check to `monitor` progress.
+Run your first refresh to index tweets and generate suggestions:
 
-> The first time this you run this command it will take some time.
+> The first time you run this it will take some time.
 
 ```sh
-sonar ingest tweets
-
-sonar monitor
-sonar monitor --watch
+sonar refresh
+sonar status --watch
 ```
 
 ---
@@ -72,12 +70,10 @@ Setting up your own social data pipeline is genuinely awful. You're looking at O
 
 **Sonar skips all of that. Get actionalable data for OpenClaw in 15 minutes.**
 
-We believe your data is yours. So you want to go deeper than our platform allows — build your own models, run custom queries, pipe it into your own tooling — you can download everything we have indexed on your behalf into a local SQLite database and do whatever you want with it:
+We believe your data is yours. If you want to go deeper than our platform allows — build your own models, run custom queries, pipe it into your own tooling — you can sync everything we have indexed on your behalf into a local SQLite database:
 
 ```bash
-pnpm run cli -- data download   # full snapshot → ~/.sonar/data.db
-pnpm run cli -- data sync       # incremental updates
-pnpm run cli -- data sql        # drop into a sqlite3 shell
+sonar sync              # sync data to ~/.sonar/data.db
 ```
 
 No lock-in. If you outgrow us, you leave with your data intact.
@@ -110,91 +106,64 @@ This is what API-first looks like in the agentic era: strong contracts at the se
 Pull everything relevant that happened while you slept:
 
 ```bash
-pnpm run cli -- feed --hours 8 --render card
-pnpm run cli -- inbox --status inbox
+sonar --hours 8 --render card
 ```
 
-### Track a topic you care about — right now
+### Track a topic you care about
 
-Create a new interest from a plain English prompt and get content immediately:
+Add a topic from the web interface, then refresh:
 
 ```bash
-pnpm run cli -- interests create \
-  --from-prompt "I want to follow AI evals and agent infrastructure"
-
-pnpm run cli -- index suggestions --days 1
-pnpm run cli -- feed --hours 24
+sonar refresh
+sonar --hours 24
 ```
 
-Sonar generates keywords and topics from your prompt, kicks off indexing, and your feed updates with relevant posts.
+Sonar rebuilds your social graph, indexes recent tweets, and generates suggestions matched against your topics and interest profile.
 
 ### Build a scriptable news digest
 
 Combine `--json` output with `jq` to pipe Sonar content wherever you want:
 
 ```bash
-# Get today's top feed items as JSON
-pnpm run cli -- feed --hours 24 --json | jq '.[] | {author, text, url}'
+# Get today's top suggestions as JSON
+sonar --hours 24 --json | jq '.[] | {author, text, url}'
 
-# Summarize your inbox with an LLM
-pnpm run cli -- inbox --json | jq '.[].text' | your-summarizer-script
+# Summarize with an LLM
+sonar --json | jq '.[].text' | your-summarizer-script
 ```
 
-### Keep your local data fresh and queryable
+### Monitor the pipeline
 
-Download a full SQLite snapshot of your Sonar data and query it directly:
-
-```bash
-pnpm run cli -- data download
-pnpm run cli -- data sql
-# Now you have a full sqlite3 shell — write any query you want
-```
-
-Run incremental syncs on a cron to keep it current:
+Watch the queue in real time while refresh runs:
 
 ```bash
-# crontab: sync every 30 minutes
-*/30 * * * * cd /your/project && pnpm run cli -- data sync
+sonar refresh
+sonar status --watch
 ```
 
 ### Interactive triage
 
-Work through your inbox without leaving the terminal:
+Work through suggestions without leaving the terminal:
 
 ```bash
-pnpm run cli -- inbox --interactive
-pnpm run cli -- feed --interactive
+sonar                    # interactive mode is on by default
+sonar --no-interactive   # disable for scripting
 ```
 
-Mark suggestions as read, skip, archive, or save for later — keyboard-driven.
-
-### Monitor indexing jobs
-
-Watch the queue in real time while you trigger a full re-index:
-
-```bash
-pnpm run cli -- index          # trigger all jobs
-pnpm run cli -- index status --watch   # watch until complete
-```
+Mark suggestions as skip, later, or archive — keyboard-driven.
 
 ---
 
-## What Sonar doesn't do
+## How Sonar finds signal
 
-Sonar is **not a global search engine**. It won't crawl the entire internet or index trending posts from people you've never heard of.
-
-Instead, it searches within your social graph — your followers and the people you follow — up to **2 degrees of separation**. That's it. This is an intentional constraint, not a limitation we're working around.
-
-The reason is practical: API rate limits make broad crawling impossible at any useful refresh frequency. But the reason it works is more interesting — **the people in your network are already a curated signal layer**. The accounts you follow, and the accounts they follow, are a surprisingly high-quality filter for what's relevant to your domain. Sonar's job is to surface what's moving through that graph before it reaches mainstream feeds.
+Sonar surfaces relevant content from your X social graph — the people you follow and who follow you. Your network is already a curated signal layer. Sonar's job is to surface what's moving through that graph before it reaches mainstream feeds.
 
 What this means in practice:
 
 * Results reflect your network's attention, not global virality
-* You won't see noise from accounts you have no connection to
 * The feed gets more useful the more intentional you are about who you follow
-* Adding interests with specific keywords and topics sharpens what Sonar surfaces *within* that graph
-
-If you want global trend monitoring, tools like Brandwatch or Twitter's native search are better fits. Sonar is for developers who want a focused, low-noise signal from a network they've already curated.
+* Bookmarking and liking content improves your recommendations over time
+* Topics sharpen what Sonar surfaces within your graph
 
 ---
 
@@ -206,71 +175,54 @@ Sonar + OpenClaw is a natural stack: **Sonar handles the signal filtering and cu
 
 ### Morning briefing delivered to your phone
 
-Set up a cron job in OpenClaw to run your Sonar digest and pipe it back to you on Telegram every morning:
+Set up a cron job in OpenClaw to run your Sonar digest every morning:
 
 ```
 # In OpenClaw: schedule a daily 8am briefing
-"Every morning at 8am, run `sonar feed --hours 8 --json` and summarize the top 5 posts for me"
+"Every morning at 8am, run `sonar --hours 8 --json` and summarize the top 5 posts for me"
 ```
 
-OpenClaw will execute the CLI, pass the JSON output to your LLM, and send a clean summary straight to your phone — no dashboard to open.
+OpenClaw will execute the CLI, pass the JSON output to your LLM, and send a clean summary straight to your phone.
 
 ### Ask your feed questions in natural language
 
-Because `--json` makes Sonar output composable, OpenClaw can reason over it conversationally:
+Because `--json` makes Sonar output composable, OpenClaw can reason over it:
 
 ```
 # Example prompts you can send OpenClaw via WhatsApp:
 "What's the most discussed topic in my Sonar feed today?"
 "Did anyone in my feed mention Uniswap V4 in the last 48 hours?"
-"Summarize my unread Sonar inbox"
+"Summarize my Sonar suggestions"
 ```
-
-Wire it up once as an OpenClaw skill and your feed becomes queryable from any messaging app.
-
-### Triage your inbox hands-free
-
-Combine OpenClaw's scheduling with Sonar's inbox API to automatically mark low-signal suggestions:
-
-```bash
-# Shell script you can hand to OpenClaw as a scheduled skill
-sonar inbox --json | \
-  jq '[.[] | select(.score < 0.4) | .id]' | \
-  xargs -I{} sonar inbox skip {}
-```
-
-Run this nightly and your inbox stays clean without manual triage.
 
 ### Get alerted when a topic spikes
 
-Use OpenClaw's Heartbeat (scheduled wake-up) to watch for signal surges and notify you:
+Use OpenClaw's Heartbeat to watch for signal surges:
 
 ```
 # OpenClaw cron: check every 2 hours
-"Run `sonar feed --hours 2 --json` — if there are more than 10 posts about
+"Run `sonar --hours 2 --json` — if there are more than 10 posts about
 'token launchpad' or 'LVR', send me a Telegram alert with the highlights"
 ```
 
-Effectively a custom Google Alert, but filtered through your actual interest graph.
-
 ### Build a Sonar skill for OpenClaw
 
-The cleanest integration is wrapping Sonar as a reusable OpenClaw skill. Drop a skill file in your OpenClaw workspace:
+Wrap Sonar as a reusable OpenClaw skill:
 
 ```typescript
 // skills/sonar.ts
-export async function getFeed(hours = 12) {
-  const { stdout } = await exec(`sonar feed --hours ${hours} --json`);
+export async function getSuggestions(hours = 12) {
+  const { stdout } = await exec(`sonar --hours ${hours} --json`);
   return JSON.parse(stdout);
 }
 
-export async function getInbox() {
-  const { stdout } = await exec(`sonar inbox --json`);
+export async function getStatus() {
+  const { stdout } = await exec(`sonar status --json`);
   return JSON.parse(stdout);
 }
 ```
 
-Once registered, OpenClaw can call these tools autonomously whenever it decides they're relevant — no manual prompting required.
+Once registered, OpenClaw can call these tools autonomously whenever it decides they're relevant.
 
 ---
 
@@ -280,111 +232,75 @@ Once registered, OpenClaw can call these tools autonomously whenever it decides 
 
 * Node.js 20+
 * `pnpm`
-* A Sonar API key from [sonar.sh/account](https://sonar.sh/account?tab=api-keys)
-* Optional: `sqlite3` CLI (only needed for `data sql`)
+* A Sonar API key from [sonar.8640p.info](https://sonar.8640p.info/)
 
 ### Install and authenticate
 
 ```bash
-pnpm install
+pnpm add -g @1a35e1/sonar-cli@latest
 
 export SONAR_API_KEY="your_api_key_here"
-pnpm run cli -- init
+sonar config setup key=<YOUR_API_KEY>
 ```
-
-`init` writes your config to `~/.sonar/config.json`. If `SONAR_API_KEY` is set in your environment, it always takes precedence.
 
 Verify it works:
 
 ```bash
-pnpm run cli -- account
-pnpm run cli -- interests
+sonar status
+sonar topics
 ```
 
 ---
 
 ## Command Reference
 
-### Account & Config
+### Default — view suggestions
 
 ```bash
-pnpm run cli -- account              # plan, usage, suggestion counters
-pnpm run cli -- config               # show current config
-pnpm run cli -- config set vendor anthropic      # or openai
-pnpm run cli -- config set feed-render card      # or table
-pnpm run cli -- config set feed-width 100
+sonar                                # show suggestions (last 12h, limit 20)
+sonar --hours 24                     # widen time window
+sonar --days 3                       # last 3 days
+sonar --kind bookmarks               # default | bookmarks | followers | following
+sonar --render table --limit 50      # table layout
+sonar --json                         # raw JSON output
+sonar --no-interactive               # disable interactive mode
 ```
 
-### Interests
+### Topics
 
 ```bash
-pnpm run cli -- interests                          # list all
-pnpm run cli -- interests --json                   # JSON output
-
-# Create manually
-pnpm run cli -- interests create \
-  --name "Rust Systems" \
-  --description "Rust, compilers, and systems tooling" \
-  --keywords "rust,cargo,wasm" \
-  --topics "systems programming,performance"
-
-# Create from a natural language prompt (requires OPENAI_API_KEY or ANTHROPIC_API_KEY)
-pnpm run cli -- interests create \
-  --from-prompt "I want to follow AI evals and agent infra"
-
-# Update
-pnpm run cli -- interests update --id <id> --name "New Name"
-pnpm run cli -- interests update --id <id> --add-keywords "mcp,langgraph"
-pnpm run cli -- interests update --id <id> --remove-topics "old-topic"
+sonar topics                         # list all topics
+sonar topics --json                  # JSON output
+sonar topics edit --id <id> --name "New Name"
 ```
 
-### Feed
+### Pipeline
 
 ```bash
-pnpm run cli -- feed                          # last 12h, limit 20, card render
-pnpm run cli -- feed --hours 24
-pnpm run cli -- feed --days 3
-pnpm run cli -- feed --kind bookmarks         # default | bookmarks | followers | following
-pnpm run cli -- feed --render table --limit 50
-pnpm run cli -- feed --interactive
-pnpm run cli -- feed --json
+sonar refresh                        # full pipeline: graph → tweets → suggestions
+sonar status                         # account status, queue activity
+sonar status --watch                 # poll every 2s
 ```
 
-### Inbox
+### Triage
 
 ```bash
-pnpm run cli -- inbox                         # list inbox suggestions
-pnpm run cli -- inbox --all
-pnpm run cli -- inbox --status inbox --limit 50
-pnpm run cli -- inbox --interactive
-pnpm run cli -- inbox --json
-
-pnpm run cli -- inbox read --id <suggestion_id>
-pnpm run cli -- inbox skip --id <suggestion_id>
-pnpm run cli -- inbox later --id <suggestion_id>
-pnpm run cli -- inbox archive --id <suggestion_id>
+sonar skip --id <suggestion_id>      # skip a suggestion
+sonar later --id <suggestion_id>     # save for later
+sonar archive                        # archive old suggestions
 ```
 
-### Indexing
+### Config
 
 ```bash
-pnpm run cli -- reindex                       # run all jobs
-pnpm run cli -- reindex tweets
-pnpm run cli -- reindex graph
-pnpm run cli -- reindex graph --force
-pnpm run cli -- reindex suggestions --days 1
-pnpm run cli -- reindex bookmarks
-pnpm run cli -- reindex status
-pnpm run cli -- reindex status --watch
+sonar config                         # show current config
+sonar config setup key=<API_KEY>     # set API key
 ```
 
 ### Local Data
 
 ```bash
-pnpm run cli -- data download     # full download → ~/.sonar/data.db
-pnpm run cli -- data sync         # incremental sync
-pnpm run cli -- data path         # print DB path
-pnpm run cli -- data sql          # open sqlite3 shell
+sonar sync                           # sync data to local SQLite
 ```
 
 ---
@@ -393,13 +309,8 @@ pnpm run cli -- data sql          # open sqlite3 shell
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `SONAR_API_KEY` | Yes (unless saved by `init`) | Auth token |
-| `SONAR_API_URL` | No | GraphQL endpoint (default: `http://localhost:8000/graphql`) |
-| `SONAR_AI_VENDOR` | No | AI vendor for prompt generation (`openai` or `anthropic`) |
-| `SONAR_FEED_RENDER` | No | Default render style (`card` or `table`) |
-| `SONAR_FEED_WIDTH` | No | Default card width |
-| `OPENAI_API_KEY` | Sometimes | Required for OpenAI-powered `--from-prompt` |
-| `ANTHROPIC_API_KEY` | Sometimes | Required for Anthropic-powered `--from-prompt` |
+| `SONAR_API_KEY` | Yes | Auth token from [sonar.8640p.info](https://sonar.8640p.info/) |
+| `SONAR_API_URL` | No | GraphQL endpoint (default: production API) |
 
 ## Local Files
 
@@ -412,11 +323,8 @@ pnpm run cli -- data sql          # open sqlite3 shell
 
 ## Troubleshooting
 
-**`No token found. Set SONAR_API_KEY or run: sonar init`**
-Set `SONAR_API_KEY` in your environment, then run `pnpm run cli -- init`.
+**`No token found. Set SONAR_API_KEY or run: sonar config setup`**
+Set `SONAR_API_KEY` in your environment or run `sonar config setup key=<YOUR_KEY>`.
 
 **`Unable to reach server, please try again shortly.`**
-Check `SONAR_API_URL`, your network, and API availability.
-
-**`OPENAI_API_KEY is not set` / `ANTHROPIC_API_KEY is not set`**
-Set the key for your chosen vendor before using `--from-prompt` or interactive reply generation.
+Check your network connection and API availability.
