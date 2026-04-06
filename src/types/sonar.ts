@@ -148,7 +148,7 @@ export type Query = {
   apiKeys: Array<ApiKey>;
   feed: Array<FeedTweet>;
   me?: Maybe<Account>;
-  projects: Array<Project>;
+  topics: Array<Project>;
   suggestionCounts: SuggestionCounts;
   suggestions: Array<Suggestion>;
   tweet?: Maybe<Tweet>;

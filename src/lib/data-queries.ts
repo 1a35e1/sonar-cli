@@ -92,7 +92,7 @@ export const SUGGESTIONS_QUERY = `
 
 export const INTERESTS_QUERY = `
   query DataInterests {
-    projects {
+    topics {
       id: nanoId
       name
       description

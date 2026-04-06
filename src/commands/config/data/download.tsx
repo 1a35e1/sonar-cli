@@ -28,7 +28,7 @@ export default function DataDownload() {
         const [feedResult, suggestionsResult, interestsResult] = await Promise.all([
           gql<{ feed: FeedTweet[] }>(FEED_QUERY, { hours: null, days: 7, limit: 500 }),
           gql<{ suggestions: Suggestion[] }>(SUGGESTIONS_QUERY, { status: null, limit: 500 }),
-          gql<{ projects: Interest[] }>(INTERESTS_QUERY),
+          gql<{ topics: Interest[] }>(INTERESTS_QUERY),
         ])
 
         for (const item of feedResult.feed) {
@@ -39,7 +39,7 @@ export default function DataDownload() {
           upsertTweet(db, s.tweet)
           upsertSuggestion(db, { suggestionId: s.suggestionId, tweetId: s.tweet.id, score: s.score, status: s.status, relevance: null, projectsMatched: s.projectsMatched })
         }
-        for (const i of interestsResult.projects) {
+        for (const i of interestsResult.topics) {
           upsertInterest(db, i)
         }
 
@@ -49,7 +49,7 @@ export default function DataDownload() {
         setResult({
           feedCount: feedResult.feed.length,
           suggestionsCount: suggestionsResult.suggestions.length,
-          interestsCount: interestsResult.projects.length,
+          interestsCount: interestsResult.topics.length,
         })
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))

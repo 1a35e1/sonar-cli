@@ -42,7 +42,7 @@ export default function DataSync() {
           const [feedResult, suggestionsResult, interestsResult] = await Promise.all([
             gql<{ feed: FeedTweet[] }>(FEED_QUERY, { hours: null, days: 7, limit: 500 }),
             gql<{ suggestions: Suggestion[] }>(SUGGESTIONS_QUERY, { status: null, limit: 500 }),
-            gql<{ projects: Interest[] }>(INTERESTS_QUERY),
+            gql<{ topics: Interest[] }>(INTERESTS_QUERY),
           ])
 
           for (const item of feedResult.feed) {
@@ -53,14 +53,14 @@ export default function DataSync() {
             upsertTweet(freshDb, s.tweet)
             upsertSuggestion(freshDb, { suggestionId: s.suggestionId, tweetId: s.tweet.id, score: s.score, status: s.status, relevance: null, projectsMatched: s.projectsMatched })
           }
-          for (const i of interestsResult.projects) {
+          for (const i of interestsResult.topics) {
             upsertInterest(freshDb, i)
           }
 
           setSyncState(freshDb, 'last_synced_at', new Date().toISOString())
           freshDb.close()
 
-          setResult({ feedCount: feedResult.feed.length, suggestionsCount: suggestionsResult.suggestions.length, interestsCount: interestsResult.projects.length })
+          setResult({ feedCount: feedResult.feed.length, suggestionsCount: suggestionsResult.suggestions.length, interestsCount: interestsResult.topics.length })
           return
         }
 

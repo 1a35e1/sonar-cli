@@ -64,7 +64,7 @@ const INBOX_QUERY = `
   }
 `
 
-const HAS_INTERESTS_QUERY = `query HasInterests { projects { id: nanoId } }`
+const HAS_INTERESTS_QUERY = `query HasInterests { topics { id: nanoId } }`
 
 export default function Sonar({ options: flags }: Props) {
   const [items, setItems] = useState<UnifiedItem[] | null>(null)
@@ -80,8 +80,8 @@ export default function Sonar({ options: flags }: Props) {
       try {
         const limit = flags.limit ?? 20
 
-        const { projects } = await gql<{ projects: { id: string }[] }>(HAS_INTERESTS_QUERY)
-        if (projects.length === 0) {
+        const { topics } = await gql<{ topics: { id: string }[] }>(HAS_INTERESTS_QUERY)
+        if (topics.length === 0) {
           setNoInterests(true)
           return
         }
