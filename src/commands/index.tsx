@@ -9,6 +9,8 @@ import { getFeedRender, getFeedWidth, getVendor } from '../lib/config.js'
 import { TweetCard } from '../components/TweetCard.js'
 import type { FeedTweet } from '../components/TweetCard.js'
 
+export const args = zod.tuple([]).rest(zod.string())
+
 export const options = zod.object({
   hours: zod.number().optional().describe('Look back N hours (default: 12)'),
   days: zod.number().optional().describe('Look back N days'),
@@ -21,7 +23,7 @@ export const options = zod.object({
   vendor: zod.string().optional().describe('AI vendor: openai|anthropic'),
 })
 
-type Props = { options: zod.infer<typeof options> }
+type Props = { options: zod.infer<typeof options>; args: string[] }
 
 interface SuggestionItem {
   suggestionId: string
@@ -66,10 +68,20 @@ const INBOX_QUERY = `
 
 const HAS_INTERESTS_QUERY = `query HasInterests { topics { id: nanoId } }`
 
-export default function Sonar({ options: flags }: Props) {
+export default function Sonar({ options: flags, args: positionalArgs }: Props) {
   const [items, setItems] = useState<UnifiedItem[] | null>(null)
   const [noInterests, setNoInterests] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Unknown subcommand — show help hint
+  if (positionalArgs && positionalArgs.length > 0) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="red">Unknown command: {positionalArgs.join(' ')}</Text>
+        <Text dimColor>Run <Text color="cyan">sonar --help</Text> to see available commands.</Text>
+      </Box>
+    )
+  }
   const { stdout } = useStdout()
   const termWidth = stdout.columns ?? 100
   const cardWidth = getFeedWidth(flags.width)
