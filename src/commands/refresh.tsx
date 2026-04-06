@@ -15,7 +15,7 @@ export default function Refresh() {
       setStatus('running')
       try {
         await gql<{ refresh: boolean }>(
-          'mutation Refresh { refresh(days: 1) }',
+          'mutation Refresh { refresh(days: 3) }',
         )
         setStatus('ok')
       } catch (err) {
