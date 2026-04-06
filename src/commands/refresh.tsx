@@ -9,14 +9,16 @@ export default function Refresh() {
   const { exit } = useApp()
   const [status, setStatus] = useState<Status>('pending')
   const [error, setError] = useState<string | null>(null)
+  const [batchId, setBatchId] = useState<string | null>(null)
 
   useEffect(() => {
     async function run() {
       setStatus('running')
       try {
-        await gql<{ refresh: boolean }>(
+        const result = await gql<{ refresh: string }>(
           'mutation Refresh { refresh(days: 1) }',
         )
+        setBatchId(result.refresh)
         setStatus('ok')
       } catch (err) {
         setStatus('failed')
@@ -52,8 +54,8 @@ export default function Refresh() {
   return (
     <Box flexDirection="column" gap={1}>
       <Text color="green">✓ Refresh pipeline queued</Text>
+      {batchId && <Text dimColor>batch: {batchId}</Text>}
       <Text dimColor>
-        graph → tweets → suggestions will run in order.{'\n'}
         Run <Text color="cyan">sonar status --watch</Text> to monitor progress.
       </Text>
     </Box>
