@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { DB_PATH } from './db.js'
 
 const CONFIG_DIR = join(homedir(), '.sonar')
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json')
@@ -38,8 +39,8 @@ export function deleteConfig(): void {
 }
 
 export function deleteDatabase(): void {
-  if (existsSync(join(CONFIG_DIR, 'database.sqlite'))) {
-    unlinkSync(join(CONFIG_DIR, 'database.sqlite'))
+  if (existsSync(DB_PATH)) {
+    unlinkSync(DB_PATH)
   }
 }
 
