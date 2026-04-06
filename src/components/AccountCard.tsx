@@ -28,10 +28,6 @@ export function AccountCard({ me }: Props) {
       <Text><Text dimColor>plan: </Text>{me.isPayingCustomer ? 'Pro' : 'Free'}</Text>
       <Text><Text dimColor>indexing accounts: </Text>{me.indexingAccounts}</Text>
       <Text><Text dimColor>indexed tweets: </Text>{me.indexedTweets.toLocaleString()}</Text>
-      <Text>
-        <Text dimColor>embeddings queue: </Text>
-        <Text color={me.pendingEmbeddings > 0 ? 'yellow' : 'green'}>{me.pendingEmbeddings}</Text>
-      </Text>
       {me.twitterIndexedAt && (
         <Text>
           <Text dimColor>last indexed: </Text>
