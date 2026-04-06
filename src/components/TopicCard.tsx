@@ -15,11 +15,9 @@ export function TopicCard({ topic, termWidth, isLast }: TopicCardProps) {
     year: 'numeric',
   })
 
-  // Truncate description to ~2 lines
-  const maxDescLen = Math.min(termWidth, 80) * 2
   const desc = topic.description
-    ? topic.description.length > maxDescLen
-      ? topic.description.slice(0, maxDescLen).trimEnd() + '...'
+    ? topic.description.length > 160
+      ? topic.description.slice(0, 160).trimEnd() + '...'
       : topic.description
     : null
 
