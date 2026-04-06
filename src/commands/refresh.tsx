@@ -35,6 +35,17 @@ export default function Refresh() {
   }
 
   if (status === 'failed') {
+    const isAuthError = error?.includes('Re-authorize') || error?.includes('not connected')
+    if (isAuthError) {
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Text color="yellow">X authorization required</Text>
+          <Text dimColor>
+            Connect your X account at <Text color="cyan">https://sonar.8640p.info/account</Text>
+          </Text>
+        </Box>
+      )
+    }
     return <Text color="red">Error: {error}</Text>
   }
 
