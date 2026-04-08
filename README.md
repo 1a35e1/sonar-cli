@@ -252,13 +252,6 @@ sonar refresh --suggestions          # just regenerate suggestions
 sonar refresh --likes --bookmarks    # any combo of flags
 ```
 
-### Sync
-
-```bash
-sonar sync bookmarks                 # trigger server to sync bookmarks from X
-sonar sync likes                     # trigger server to sync likes from X
-```
-
 ### Status
 
 ```bash

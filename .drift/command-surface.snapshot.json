@@ -1,6 +1,6 @@
 {
   "source": "src/commands/**/*.tsx",
-  "commandCount": 32,
+  "commandCount": 30,
   "commands": [
     "sonar",
     "sonar account",
@@ -26,8 +26,6 @@
     "sonar refresh",
     "sonar skip",
     "sonar status",
-    "sonar sync bookmarks",
-    "sonar sync likes",
     "sonar topics",
     "sonar topics add",
     "sonar topics delete",
