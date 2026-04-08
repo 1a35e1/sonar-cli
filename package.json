@@ -45,6 +45,7 @@
     "ink-table": "^3.1.0",
     "pastel": "^3.0.0",
     "react": "^19",
+    "unicode-animations": "^1.0.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
