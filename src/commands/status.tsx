@@ -36,6 +36,7 @@ interface PipelineProgress {
   current: string
   steps: PipelineStep[]
   total_duration: number
+  error?: string
 }
 
 interface StatusData {
@@ -269,9 +270,11 @@ export default function Status({ options: flags }: Props) {
             </Text>
           ))}
           <Text color="red">  ✗ Failed</Text>
-          {pipeline.steps.length === 0 && (
+          {pipeline.error && (
+            <Text color="red">  {pipeline.error}</Text>
+          )}
+          {(pipeline.error?.toLowerCase().includes('oauth') || pipeline.error?.toLowerCase().includes('authorization') || pipeline.error?.toLowerCase().includes('401') || pipeline.steps.length === 0) && (
             <Box flexDirection="column" marginTop={1}>
-              <Text color="yellow">  Pipeline failed before starting — this usually means X authorization has expired.</Text>
               <Text dimColor>  Re-connect your X account at <Text color="cyan">https://sonar.8640p.info/account</Text></Text>
               <Text dimColor>  Then run <Text color="cyan">sonar refresh</Text> to retry.</Text>
             </Box>

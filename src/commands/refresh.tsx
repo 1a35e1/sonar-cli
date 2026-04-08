@@ -35,7 +35,9 @@ export default function Refresh() {
           })
           if (res.ok) {
             const data = await res.json()
-            if (data.pipeline?.status === 'failed' && data.pipeline?.steps?.length === 0) {
+            if (data.pipeline?.status === 'failed') {
+              const pipelineError = data.pipeline?.error ?? ''
+              setError(pipelineError)
               setStatus('auth-failed')
               return
             }
@@ -64,7 +66,7 @@ export default function Refresh() {
   if (status === 'auth-failed') {
     return (
       <Box flexDirection="column" gap={1}>
-        <Text color="yellow">Pipeline failed — X authorization has likely expired.</Text>
+        <Text color="red">Pipeline failed{error ? `: ${error}` : ''}</Text>
         <Text dimColor>
           Re-connect your X account at <Text color="cyan">https://sonar.8640p.info/account</Text>
         </Text>
