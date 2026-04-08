@@ -216,7 +216,9 @@ Press `q` to quit follow mode.
 sonar topics                         # list all topics
 sonar topics --json                  # JSON output
 sonar topics add "AI agents"         # add a topic
+sonar topics view <id>               # view a topic
 sonar topics edit <id> --name "New Name"
+sonar topics delete <id>             # delete a topic
 ```
 
 #### AI-powered topic suggestions
@@ -255,10 +257,10 @@ sonar config                         # show current config
 sonar config setup key=<API_KEY>     # set API key
 ```
 
-### Local Data
+### Sync
 
 ```bash
-sonar sync                           # sync data to local SQLite
+sonar sync bookmarks                 # sync bookmarks to local SQLite
 ```
 
 ---
