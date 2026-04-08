@@ -35,6 +35,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Drift checks
+        env:
+          CI: "true"
+          SONAR_API_URL: https://api.sonar.8640p.info/graphql
+        run: pnpm drift:check
+
       - name: Publish
         run: pnpm publish --access public --no-git-checks --provenance
         env:

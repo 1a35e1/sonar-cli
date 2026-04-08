@@ -61,13 +61,15 @@ Run these checks sequentially. Abort on the first failure with a clear message.
 
 4. Print the generated changelog section for the user to review.
 
-## Step 4: Build
+## Step 4: Build + Drift Checks
 
-Run `pnpm build` to compile TypeScript to `dist/`. Abort if this fails.
+1. Run `pnpm build` to compile TypeScript to `dist/`. Abort if this fails.
+2. Run `pnpm drift:surface:update` to update the command surface snapshot.
+3. Run `pnpm drift:check` to verify all drift checks pass. Abort if any fail.
 
 ## Step 5: Git Commit
 
-1. Stage exactly these files: `package.json`, `pnpm-lock.yaml`, `CHANGELOG.md`
+1. Stage exactly these files: `package.json`, `pnpm-lock.yaml`, `CHANGELOG.md`, `.drift/command-surface.snapshot.json`
 2. Commit with message: `chore: release NEW_VERSION`
 3. Print: "Committed: chore: release NEW_VERSION"
 
