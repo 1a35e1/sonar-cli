@@ -1,8 +1,19 @@
 import React, { useEffect, useState } from 'react'
+import zod from 'zod'
 import { Box, Text, useApp } from 'ink'
 import { gql } from '../lib/client.js'
 import { getToken, getApiUrl } from '../lib/config.js'
 import { Spinner } from '../components/Spinner.js'
+
+export const options = zod.object({
+  bookmarks: zod.boolean().default(false).describe('Sync bookmarks from X'),
+  likes: zod.boolean().default(false).describe('Sync likes from X'),
+  graph: zod.boolean().default(false).describe('Rebuild social graph'),
+  tweets: zod.boolean().default(false).describe('Index tweets across network'),
+  suggestions: zod.boolean().default(false).describe('Regenerate suggestions'),
+})
+
+type Props = { options: zod.infer<typeof options> }
 
 type Status = 'pending' | 'running' | 'ok' | 'failed' | 'auth-failed'
 
@@ -10,19 +21,35 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export default function Refresh() {
+const REFRESH_MUTATION = `
+  mutation Refresh($days: Int!, $steps: [String!]) {
+    refresh(days: $days, steps: $steps)
+  }
+`
+
+export default function Refresh({ options: flags }: Props) {
   const { exit } = useApp()
   const [status, setStatus] = useState<Status>('pending')
   const [error, setError] = useState<string | null>(null)
   const [batchId, setBatchId] = useState<string | null>(null)
 
+  // Build steps array from flags — null means run all
+  const selectedSteps: string[] = []
+  if (flags.bookmarks) selectedSteps.push('bookmarks')
+  if (flags.likes) selectedSteps.push('likes')
+  if (flags.graph) selectedSteps.push('graph')
+  if (flags.tweets) selectedSteps.push('tweets')
+  if (flags.suggestions) selectedSteps.push('suggestions')
+  const steps = selectedSteps.length > 0 ? selectedSteps : null
+
   useEffect(() => {
     async function run() {
       setStatus('running')
       try {
-        const result = await gql<{ refresh: string }>(
-          'mutation Refresh { refresh(days: 1) }',
-        )
+        const result = await gql<{ refresh: string }>(REFRESH_MUTATION, {
+          days: 1,
+          steps,
+        })
         setBatchId(result.refresh)
 
         // Brief poll to catch instant pipeline failures (e.g. expired X auth)
@@ -59,8 +86,10 @@ export default function Refresh() {
     if (status === 'ok' || status === 'failed' || status === 'auth-failed') exit()
   }, [status])
 
+  const label = steps ? steps.join(', ') : 'full pipeline'
+
   if (status === 'running') {
-    return <Spinner label="Queuing refresh pipeline..." />
+    return <Spinner label={`Queuing refresh (${label})...`} />
   }
 
   if (status === 'auth-failed') {
@@ -94,7 +123,7 @@ export default function Refresh() {
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color="green">✓ Refresh pipeline queued</Text>
+      <Text color="green">✓ Refresh queued ({label})</Text>
       {batchId && <Text dimColor>batch: {batchId}</Text>}
       <Text dimColor>
         Run <Text color="cyan">sonar status --watch</Text> to monitor progress.
