@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Box, Text } from 'ink'
 import { unlinkSync, existsSync } from 'node:fs'
-import { gql } from '../../../lib/client.js'
-import { Spinner } from '../../../components/Spinner.js'
+import { gql } from '../../lib/client.js'
+import { Spinner } from '../../components/Spinner.js'
 import {
   DB_PATH,
   openDb,
@@ -12,9 +12,9 @@ import {
   upsertInterest,
   getSyncState,
   setSyncState,
-} from '../../../lib/db.js'
-import { FEED_QUERY, SUGGESTIONS_QUERY, INTERESTS_QUERY } from '../../../lib/data-queries.js'
-import type { FeedTweet, Suggestion, Interest } from '../../../lib/data-queries.js'
+} from '../../lib/db.js'
+import { FEED_QUERY, SUGGESTIONS_QUERY, INTERESTS_QUERY } from '../../lib/data-queries.js'
+import type { FeedTweet, Suggestion, Interest } from '../../lib/data-queries.js'
 
 interface SyncResult {
   feedCount: number

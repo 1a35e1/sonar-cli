@@ -4,8 +4,8 @@ import { Text } from 'ink'
 import { existsSync, mkdirSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import Database from 'better-sqlite3'
-import { DB_PATH } from '../../../lib/db.js'
-import { integrityCheck } from './utils.js'
+import { DB_PATH } from '../../lib/db.js'
+import { integrityCheck } from '../../lib/data-utils.js'
 
 export const options = zod.object({
   out: zod.string().optional().describe('Backup output path (default: ~/.sonar/data-backup-<timestamp>.db)'),

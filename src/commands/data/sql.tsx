@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { Text } from 'ink'
 import { spawnSync } from 'node:child_process'
-import { DB_PATH } from '../../../lib/db.js'
+import { DB_PATH } from '../../lib/db.js'
 
 export default function DataSql() {
   useEffect(() => {

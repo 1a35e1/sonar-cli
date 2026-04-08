@@ -3,8 +3,8 @@ import zod from 'zod'
 import { Text } from 'ink'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { DB_PATH } from '../../../lib/db.js'
-import { integrityCheck, copyDbWithSidecars } from './utils.js'
+import { DB_PATH } from '../../lib/db.js'
+import { integrityCheck, copyDbWithSidecars } from '../../lib/data-utils.js'
 
 export const options = zod.object({
   from: zod.string().describe('Backup database path to restore from'),

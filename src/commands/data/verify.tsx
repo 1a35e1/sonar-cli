@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Text } from 'ink'
 import { existsSync } from 'node:fs'
-import { DB_PATH } from '../../../lib/db.js'
-import { integrityCheck } from './utils.js'
+import { DB_PATH } from '../../lib/db.js'
+import { integrityCheck } from '../../lib/data-utils.js'
 
 export const options = zod.object({
   path: zod.string().optional().describe('Database path (default: local sonar DB path)'),

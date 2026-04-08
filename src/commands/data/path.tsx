@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { Text } from 'ink'
-import { DB_PATH } from '../../../lib/db.js'
+import { DB_PATH } from '../../lib/db.js'
 
 export default function DataPath() {
   useEffect(() => {
