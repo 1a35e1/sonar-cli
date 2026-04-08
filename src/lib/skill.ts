@@ -1,4 +1,5 @@
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 
@@ -112,19 +113,38 @@ sonar config nuke --confirm
 
 const DEFAULT_INSTALL_PATH = join(homedir(), '.claude', 'skills', 'sonar', 'SKILL.md')
 
-export function writeSkillTo(dest?: string, install?: boolean): void {
+function sha256(content: string): string {
+  return createHash('sha256').update(content).digest('hex')
+}
+
+function safeWrite(target: string, content: string, force: boolean): void {
+  if (existsSync(target) && !force) {
+    const existing = readFileSync(target, 'utf8')
+    if (existing === content) {
+      process.stdout.write(`SKILL.md is already up to date: ${target}\n`)
+      process.exit(0)
+    }
+    // File exists and differs — user may have customized it
+    process.stderr.write(
+      `SKILL.md has been modified: ${target}\n` +
+      `Use --force to overwrite, or manually merge.\n` +
+      `New version hash: ${sha256(content).slice(0, 8)}\n`
+    )
+    process.exit(1)
+  }
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, content, 'utf8')
+  process.stdout.write(`SKILL.md written to ${target}\n`)
+}
+
+export function writeSkillTo(dest?: string, install?: boolean, force?: boolean): void {
   if (install || dest === '--install') {
-    const target = DEFAULT_INSTALL_PATH
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, SKILL_CONTENT, 'utf8')
-    process.stdout.write(`SKILL.md written to ${target}\n`)
+    safeWrite(DEFAULT_INSTALL_PATH, SKILL_CONTENT, force ?? false)
     process.exit(0)
   }
 
   if (dest) {
-    mkdirSync(dirname(dest), { recursive: true })
-    writeFileSync(dest, SKILL_CONTENT, 'utf8')
-    process.stdout.write(`SKILL.md written to ${dest}\n`)
+    safeWrite(dest, SKILL_CONTENT, force ?? false)
     process.exit(0)
   }
 
