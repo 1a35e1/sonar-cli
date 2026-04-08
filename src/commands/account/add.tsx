@@ -3,18 +3,36 @@ import zod from 'zod'
 import { Text } from 'ink'
 import { readAccounts, writeAccounts, migrateToAccounts } from '../../lib/config.js'
 
+const ADJECTIVES = [
+  'bouncy', 'cosmic', 'dizzy', 'fuzzy', 'gentle', 'happy', 'jazzy',
+  'lucky', 'mellow', 'nimble', 'plucky', 'quiet', 'rusty', 'snappy',
+  'tiny', 'vivid', 'witty', 'zesty', 'bright', 'clever',
+]
+
+const ANIMALS = [
+  'rabbit', 'falcon', 'panda', 'otter', 'fox', 'wolf', 'eagle',
+  'dolphin', 'tiger', 'koala', 'lynx', 'owl', 'raven', 'seal',
+  'hawk', 'badger', 'crane', 'finch', 'heron', 'wren',
+]
+
+function randomName(): string {
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)]
+  return `${adj}-${animal}`
+}
+
 export const args = zod.tuple([
-  zod.string().describe('Account name (e.g. personal, work)'),
   zod.string().describe('API key (snr_...)'),
 ])
 
 export const options = zod.object({
+  name: zod.string().optional().describe('Account name (default: random)'),
   'api-url': zod.string().optional().describe('Custom API URL'),
 })
 
 type Props = { args: zod.infer<typeof args>; options: zod.infer<typeof options> }
 
-export default function AccountAdd({ args: [name, key], options: flags }: Props) {
+export default function AccountAdd({ args: [key], options: flags }: Props) {
   useEffect(() => {
     migrateToAccounts()
 
@@ -24,10 +42,11 @@ export default function AccountAdd({ args: [name, key], options: flags }: Props)
     }
 
     const data = readAccounts()
+    let name = flags.name ?? randomName()
 
-    if (data.accounts[name]) {
-      process.stderr.write(`Account "${name}" already exists. Remove it first or choose a different name.\n`)
-      process.exit(1)
+    // Avoid collisions with existing names
+    while (data.accounts[name]) {
+      name = randomName()
     }
 
     data.accounts[name] = {

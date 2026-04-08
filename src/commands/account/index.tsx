@@ -30,8 +30,8 @@ export default function AccountList({ options: flags }: Props) {
       <Box flexDirection="column" gap={1}>
         <Text>No accounts configured.</Text>
         <Box flexDirection="column">
-          <Text dimColor>  sonar account add personal snr_xxxxx</Text>
-          <Text dimColor>  sonar account add work snr_yyyyy</Text>
+          <Text dimColor>  sonar account add snr_xxxxx</Text>
+          <Text dimColor>  sonar account add snr_yyyyy --name work</Text>
         </Box>
       </Box>
     )

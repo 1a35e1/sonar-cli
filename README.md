@@ -19,7 +19,7 @@ pnpm add -g @1a35e1/sonar-cli@latest
 Register your API key.
 
 ```sh
-sonar account add personal snr_xxxxx
+sonar account add snr_xxxxx
 ```
 
 View your account status:
@@ -156,7 +156,7 @@ What this means in practice:
 ```bash
 pnpm add -g @1a35e1/sonar-cli@latest
 
-sonar account add personal <YOUR_API_KEY>
+sonar account add <YOUR_API_KEY>
 ```
 
 Verify it works:
@@ -296,7 +296,7 @@ Locally, it skips when offline; in CI (`CI=true`) it is enforced.
 ## Troubleshooting
 
 **`No token found. Run: sonar account add <name> <key>`**
-Add an account with `sonar account add personal <YOUR_KEY>`. Get a key at [sonar.8640p.info](https://sonar.8640p.info/).
+Add an account with `sonar account add <YOUR_KEY>`. Get a key at [sonar.8640p.info](https://sonar.8640p.info/).
 
 **`Unable to reach server, please try again shortly.`**
 Check your network connection and API availability. The CLI automatically retries transient failures (network errors, 5xx) up to 3 times with exponential backoff. Use `--debug` to see retry attempts. Set `SONAR_MAX_RETRIES=0` to disable retries.
