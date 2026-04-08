@@ -12,6 +12,7 @@ export const options = zod.object({
   hours: zod.number().optional().describe('Look back N hours (default: 12)'),
   days: zod.number().optional().describe('Look back N days'),
   limit: zod.number().optional().describe('Result limit (default: 20)'),
+  offset: zod.number().optional().describe('Skip first N results (default: 0)'),
   kind: zod.string().optional().describe('Feed source: default|bookmarks|followers|following'),
   render: zod.string().optional().describe('Output layout: card|table'),
   width: zod.number().optional().describe('Card width in columns'),
@@ -23,8 +24,8 @@ export const options = zod.object({
 type Props = { options: zod.infer<typeof options> }
 
 const FEED_QUERY = `
-  query Feed($hours: Int, $days: Int, $limit: Int, $kind: String) {
-    feed(hours: $hours, days: $days, limit: $limit, kind: $kind) {
+  query Feed($hours: Int, $days: Int, $limit: Int, $offset: Int, $kind: String) {
+    feed(hours: $hours, days: $days, limit: $limit, offset: $offset, kind: $kind) {
       score
       matchedKeywords
       tweet {
@@ -56,6 +57,7 @@ export default function Feed({ options: flags }: Props) {
     hours: flags.hours ?? null,
     days: flags.days ?? null,
     limit: flags.limit ?? 20,
+    offset: flags.offset ?? 0,
     kind: flags.kind ?? 'default',
   }
 
