@@ -19,11 +19,7 @@ pnpm add -g @1a35e1/sonar-cli@latest
 Register your API key.
 
 ```sh
-# Ensure "SONAR_API_KEY" available in your env
-export SONAR_API_KEY=snr_xxxxx
-
-# or, manually register
-sonar config setup key=<YOUR_API_KEY>
+sonar account add personal snr_xxxxx
 ```
 
 View your account status:
@@ -160,8 +156,7 @@ What this means in practice:
 ```bash
 pnpm add -g @1a35e1/sonar-cli@latest
 
-export SONAR_API_KEY="your_api_key_here"
-sonar config setup key=<YOUR_API_KEY>
+sonar account add personal <YOUR_API_KEY>
 ```
 
 Verify it works:
@@ -269,7 +264,6 @@ sonar sync bookmarks                 # sync bookmarks to local SQLite
 
 | Variable            | Required             | Purpose                                                             |
 | ------------------- | -------------------- | ------------------------------------------------------------------- |
-| `SONAR_API_KEY`     | Yes                  | Auth token from [sonar.8640p.info](https://sonar.8640p.info/)       |
 | `SONAR_API_URL`     | No                   | GraphQL endpoint (default: production API)                          |
 | `SONAR_MAX_RETRIES` | No                   | Max retry attempts on transient failures (default: 3, 0 to disable) |
 | `OPENAI_API_KEY`    | For `topics suggest` | Required when using OpenAI vendor for AI suggestions                |
@@ -301,8 +295,8 @@ Locally, it skips when offline; in CI (`CI=true`) it is enforced.
 
 ## Troubleshooting
 
-**`No token found. Set SONAR_API_KEY or run: sonar config setup`**
-Set `SONAR_API_KEY` in your environment or run `sonar config setup key=<YOUR_KEY>`.
+**`No token found. Run: sonar account add <name> <key>`**
+Add an account with `sonar account add personal <YOUR_KEY>`. Get a key at [sonar.8640p.info](https://sonar.8640p.info/).
 
 **`Unable to reach server, please try again shortly.`**
 Check your network connection and API availability. The CLI automatically retries transient failures (network errors, 5xx) up to 3 times with exponential backoff. Use `--debug` to see retry attempts. Set `SONAR_MAX_RETRIES=0` to disable retries.

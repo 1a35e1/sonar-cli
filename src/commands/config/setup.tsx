@@ -16,11 +16,11 @@ export default function Setup({ options: flags }: Props) {
       process.exit(1)
     }
 
-    const apiKey = flags.key || process.env.SONAR_API_KEY
+    const apiKey = flags.key
     const apiUrl = process.env.SONAR_API_URL
 
     if (!apiKey) {
-      process.stderr.write('SONAR_API_KEY is not set. Generate a key at https://sonar.8640p.info\n')
+      process.stderr.write('API key required. Run: sonar config setup --key=<YOUR_KEY>\n')
       process.exit(1)
     }
 

@@ -9,7 +9,7 @@ homepage: https://sonar.sh
 user-invocable: true
 allowed-tools: Bash
 argument-hint: [command and options]
-metadata: {"openclaw":{"emoji":"📡","primaryEnv":"SONAR_API_KEY","requires":{"bins":["sonar"],"env":["SONAR_API_KEY"]}}}
+metadata: {"openclaw":{"emoji":"📡","requires":{"bins":["sonar"]}}}
 ---
 
 # Sonar CLI
@@ -102,7 +102,6 @@ sonar config nuke --confirm
 
 | Variable | Purpose |
 |---|---|
-| \`SONAR_API_KEY\` | API key for auth (overrides config file token) |
 | \`SONAR_API_URL\` | Backend URL (defaults to production GraphQL endpoint) |
 | \`SONAR_AI_VENDOR\` | Vendor override for AI-assisted operations (\`openai\` or \`anthropic\`) |
 | \`SONAR_FEED_RENDER\` | Default feed renderer override |

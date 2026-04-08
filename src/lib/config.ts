@@ -105,10 +105,6 @@ export function getActiveAccount(): { name: string; token: string; apiUrl: strin
 }
 
 export function getToken(): string {
-  // SONAR_API_KEY env var takes highest priority
-  const apiKey = process.env.SONAR_API_KEY
-  if (apiKey) return apiKey
-
   // Check accounts.json
   const account = getActiveAccount()
   if (account?.token) return account.token
@@ -117,7 +113,7 @@ export function getToken(): string {
   const config = readConfig()
   if (config.token) return config.token
 
-  process.stderr.write('No token found. Set SONAR_API_KEY or run: sonar account add <name> <key>\n')
+  process.stderr.write('No token found. Run: sonar account add <name> <key>\n')
   process.exit(1)
 }
 
