@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Text } from 'ink'
 
-const FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+// Sonar ping — radiates outward, resets
+const FRAMES = [' ', ' ', '·', '•', '●', '◉', '◎', '○', ' ']
 
 interface SpinnerProps {
   label?: string
@@ -13,14 +14,14 @@ export function Spinner({ label }: SpinnerProps) {
   useEffect(() => {
     const timer = setInterval(() => {
       setFrame((f) => (f + 1) % FRAMES.length)
-    }, 80)
+    }, 100)
     return () => clearInterval(timer)
   }, [])
 
   return (
     <Text>
-      <Text color="cyan">{FRAMES[frame]} </Text>
-      {label ?? 'Loading...'}
+      <Text color="cyan">{FRAMES[frame]}</Text>
+      {label ? <Text> {label}</Text> : null}
     </Text>
   )
 }

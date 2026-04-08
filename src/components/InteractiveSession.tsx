@@ -50,7 +50,16 @@ interface TriageSessionProps {
   fetchMore?: (offset: number) => Promise<TriageItem[]>
 }
 
-type ActionLabel = 'archived' | 'saved for later' | 'skipped' | null
+type ActionLabel = 'dismissed' | 'saved' | null
+
+const UNDO_WINDOW_MS = 10_000
+
+interface PendingAction {
+  timer: ReturnType<typeof setTimeout>
+  suggestionId: string
+  status: string
+  index: number
+}
 
 export function TriageSession({ items: initialItems, total: initialTotal, fetchMore }: TriageSessionProps) {
   const { stdout } = useStdout()
@@ -63,6 +72,7 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   const [lastAction, setLastAction] = useState<ActionLabel>(null)
   const [acting, setActing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [pending, setPending] = useState<PendingAction | null>(null)
 
   // Fetch next page when 3 items from the end
   useEffect(() => {
@@ -80,41 +90,68 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
     }
   }, [index, items.length, total, loading])
 
+  // Flush pending on unmount
+  useEffect(() => {
+    return () => { if (pending) { clearTimeout(pending.timer); commitAction(pending) } }
+  }, [pending])
+
   const done = index >= items.length && items.length >= total
   const current = items[index]
 
-  // Fire mutation in background, advance immediately
+  function commitAction(action: PendingAction) {
+    gql(UPDATE_MUTATION, { suggestionId: action.suggestionId, status: action.status })
+      .catch(() => {})
+  }
+
   const act = useCallback(
-    (status: 'ARCHIVED' | 'LATER' | 'SKIPPED' | null, label: ActionLabel) => {
-      if (acting) return
+    (status: 'ARCHIVED' | 'SKIPPED', label: ActionLabel) => {
       const item = items[index]
 
-      if (status && item.suggestionId) {
-        setActing(true)
-        gql(UPDATE_MUTATION, { suggestionId: item.suggestionId, status })
-          .catch(() => {}) // silent — don't block the user
-          .finally(() => setActing(false))
+      // Flush any previous pending action immediately
+      if (pending) {
+        clearTimeout(pending.timer)
+        commitAction(pending)
+      }
+
+      if (item.suggestionId) {
+        // Defer the mutation — can be undone within the window
+        const timer = setTimeout(() => {
+          commitAction({ timer: 0 as any, suggestionId: item.suggestionId!, status, index })
+          setPending(null)
+        }, UNDO_WINDOW_MS)
+
+        setPending({ timer, suggestionId: item.suggestionId, status, index })
       }
 
       setLastAction(label)
       setIndex((i) => i + 1)
     },
-    [index, items, acting],
+    [index, items, pending],
   )
+
+  const undo = useCallback(() => {
+    if (!pending) return
+
+    clearTimeout(pending.timer)
+    setPending(null)
+    setIndex(pending.index)
+    setLastAction(null)
+  }, [pending])
 
   useInput(
     (input, key) => {
       if (done) {
         if (input === 'q') process.exit(0)
+        if (input === 'u') undo()
         return
       }
 
-      if (key.return || input === ' ') {
-        act('SKIPPED', 'skipped')
-      } else if (input === 'a') {
-        act('ARCHIVED', 'archived')
-      } else if (input === 'l') {
-        act('LATER', 'saved for later')
+      if (key.return || input === ' ' || input === 'd' || input === 'n') {
+        act('SKIPPED', 'dismissed')
+      } else if (input === 's') {
+        act('ARCHIVED', 'saved')
+      } else if (input === 'u') {
+        undo()
       } else if (input === 'o') {
         const handle = current.tweet.user.username ?? current.tweet.user.displayName
         const url = `https://x.com/${handle}/status/${current.tweet.id}`
@@ -129,15 +166,13 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   if (done) {
     return (
       <Box flexDirection="column" gap={1} marginTop={1}>
-        <Text color="green">✓ All clear</Text>
+        <Text color="green">✓ Inbox zero</Text>
         {lastAction && <Text dimColor>last: {lastAction}</Text>}
         <Text dimColor>q to quit</Text>
       </Box>
     )
   }
 
-  const handle = current.tweet.user.username ?? current.tweet.user.displayName
-  const tweetUrl = `https://x.com/${handle}/status/${current.tweet.id}`
   const canTriage = !!current.suggestionId
 
   return (
@@ -159,15 +194,14 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
         <Box marginTop={1} gap={3}>
           {canTriage ? (
             <>
-              <Text dimColor><Text color="white">space</Text> skip</Text>
-              <Text dimColor><Text color="white">a</Text> archive</Text>
-              <Text dimColor><Text color="white">l</Text> later</Text>
+              <Text dimColor><Text color="white">n</Text> next</Text>
+              <Text dimColor><Text color="white">s</Text> save</Text>
               <Text dimColor><Text color="white">o</Text> open</Text>
               <Text dimColor><Text color="white">q</Text> quit</Text>
             </>
           ) : (
             <>
-              <Text dimColor><Text color="white">space</Text> next</Text>
+              <Text dimColor><Text color="white">n</Text> next</Text>
               <Text dimColor><Text color="white">o</Text> open</Text>
               <Text dimColor><Text color="white">q</Text> quit</Text>
             </>

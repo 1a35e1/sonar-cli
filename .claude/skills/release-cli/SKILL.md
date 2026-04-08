@@ -1,21 +1,23 @@
 ---
-name: release
-description: Run the full npm release workflow — version bump, changelog, build, publish, push, and GitHub release.
+name: release-cli
+description: Run the full CLI release workflow — version bump, changelog, build, commit, push, and GitHub release. npm publish happens via trusted publishing in CI.
 user-invocable: true
 allowed-tools: Bash, Read, Edit, Write, Glob, Grep
 argument-hint: <patch|minor|major>
 ---
 
-# Release Workflow
+# Release CLI Workflow
 
 Execute the full release pipeline for `@1a35e1/sonar-cli`. The user invokes this skill with a semver bump type: `patch`, `minor`, or `major`.
+
+npm publishing uses **trusted publishing** via GitHub Actions OIDC — no OTP required. The `publish.yml` workflow triggers automatically when a GitHub release is created.
 
 ## Argument Validation
 
 The argument MUST be one of: `patch`, `minor`, or `major`. If missing or invalid, print usage and stop:
 
 ```
-Usage: /release <patch|minor|major>
+Usage: /release-cli <patch|minor|major>
 ```
 
 ## Step 1: Pre-flight Checks
@@ -24,7 +26,7 @@ Run these checks sequentially. Abort on the first failure with a clear message.
 
 1. **Clean working tree**: Run `git status --porcelain`. If output is non-empty, abort: "Working tree is not clean. Commit or stash changes first."
 2. **On main branch**: Run `git branch --show-current`. If not `main`, abort: "Must be on the main branch to release."
-3. **Typecheck passes**: Run `pnpm build` (this runs `tsc`). If it fails, abort: "Build failed. Fix type errors before releasing."
+3. **Build passes**: Run `pnpm build` (this runs `tsc`). If it fails, abort: "Build failed. Fix type errors before releasing."
 
 ## Step 2: Version Bump
 
@@ -69,23 +71,11 @@ Run `pnpm build` to compile TypeScript to `dist/`. Abort if this fails.
 2. Commit with message: `chore: release NEW_VERSION`
 3. Print: "Committed: chore: release NEW_VERSION"
 
-## Step 6: npm Publish (Confirmation Gate)
-
-**ASK THE USER FOR CONFIRMATION AND COLLECT OTP** before proceeding:
-
-> Ready to publish `@1a35e1/sonar-cli@NEW_VERSION` to npm. Provide your npm OTP to proceed (or "skip" to stop).
-
-If the user provides an OTP:
-1. Run `pnpm publish --access public --otp <OTP>`
-2. Confirm success. If it fails, abort with the error output.
-
-If the user says "skip" or denies, stop the workflow here.
-
-## Step 7: Push + GitHub Release (Confirmation Gate)
+## Step 6: Push + GitHub Release (Confirmation Gate)
 
 **ASK THE USER FOR CONFIRMATION** before proceeding:
 
-> Ready to push to remote and create GitHub release v{NEW_VERSION}. Proceed?
+> Ready to push to remote and create GitHub release v{NEW_VERSION}. This will trigger npm publish via trusted publishing in CI. Proceed?
 
 If confirmed:
 1. Run `git push`
@@ -94,6 +84,7 @@ If confirmed:
    gh release create v<NEW_VERSION> --title "v<NEW_VERSION>" --notes "<changelog section from step 3>"
    ```
 3. Print the GitHub release URL from the `gh` output.
+4. Print: "npm publish will run automatically via GitHub Actions. Monitor at: https://github.com/1a35e1/sonar-cli/actions"
 
 If denied, remind the user they can push and create the release manually later.
 
@@ -101,4 +92,4 @@ If denied, remind the user they can push and create the release manually later.
 
 - If any command fails, print the full error output and abort immediately.
 - Do NOT continue past a failed step — each step depends on the previous one.
-- If publish fails, the commit is already made locally. Inform the user they can retry with `pnpm publish --access public` after fixing the issue.
+- If push or release creation fails, the commit is already made locally. Inform the user they can retry with `git push` and `gh release create` manually.

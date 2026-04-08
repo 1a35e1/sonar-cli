@@ -1,7 +1,7 @@
 {
   "name": "@1a35e1/sonar-cli",
-  "version": "0.2.1",
-  "description": " _|_|_|    _|_|    _|      _|    _|_|    _|_|_|\n_|        _|    _|  _|_|    _|  _|    _|  _|    _|\n  _|_|    _|    _|  _|  _|  _|  _|_|_|_|  _|_|_|\n      _|  _|    _|  _|    _|_|  _|    _|  _|    _|\n_|_|_|      _|_|    _|      _|  _|    _|  _|    _|\n\nX social graph CLI for signal filtering and curation",
+  "version": "0.3.0",
+  "description": "X social graph CLI for signal filtering and curation",
   "type": "module",
   "bin": {
     "sonar": "dist/cli.js"

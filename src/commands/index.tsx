@@ -34,7 +34,10 @@ interface SuggestionItem {
     xid: string
     text: string
     createdAt: string
-    user: { displayName: string; username: string | null }
+    likeCount: number
+    retweetCount: number
+    replyCount: number
+    user: { displayName: string; username: string | null; followersCount: number | null; followingCount: number | null }
   }
 }
 
@@ -60,8 +63,8 @@ const INBOX_QUERY = `
     suggestions(status: $status, limit: $limit, offset: $offset) {
       suggestionId score
       tweet {
-        id xid text createdAt
-        user { displayName username }
+        id xid text createdAt likeCount retweetCount replyCount
+        user { displayName username followersCount followingCount }
       }
     }
     suggestionCounts { inbox }
@@ -131,10 +134,10 @@ export default function Sonar({ options: flags, args: positionalArgs }: Props) {
                 xid: s.tweet.xid,
                 text: s.tweet.text,
                 createdAt: s.tweet.createdAt,
-                likeCount: 0,
-                retweetCount: 0,
-                replyCount: 0,
-                user: { ...s.tweet.user, followersCount: null, followingCount: null },
+                likeCount: s.tweet.likeCount,
+                retweetCount: s.tweet.retweetCount,
+                replyCount: s.tweet.replyCount,
+                user: s.tweet.user,
               },
             })
           }
@@ -216,10 +219,10 @@ export default function Sonar({ options: flags, args: positionalArgs }: Props) {
           xid: s.tweet.xid,
           text: s.tweet.text,
           createdAt: s.tweet.createdAt,
-          likeCount: 0,
-          retweetCount: 0,
-          replyCount: 0,
-          user: { ...s.tweet.user, followersCount: null, followingCount: null },
+          likeCount: s.tweet.likeCount,
+          retweetCount: s.tweet.retweetCount,
+          replyCount: s.tweet.replyCount,
+          user: s.tweet.user,
         },
       }))
     }

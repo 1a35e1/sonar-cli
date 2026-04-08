@@ -106,16 +106,35 @@ This is what API-first looks like in the agentic era: strong contracts at the se
 Pull everything relevant that happened while you slept:
 
 ```bash
-sonar --hours 8 --render card
+sonar feed --hours 8
+```
+
+### Stream your feed in real time
+
+Watch for new items as they appear:
+
+```bash
+sonar feed --follow                      # visual cards, polls every 30s
+sonar feed --follow --json | jq .score   # NDJSON stream for agents
+```
+
+### Discover new topics with AI
+
+Let Sonar suggest topics based on your interests and feed:
+
+```bash
+sonar topics suggest                 # interactive accept/reject
+sonar topics suggest --count 3       # just 3 suggestions
 ```
 
 ### Track a topic you care about
 
-Add a topic from the web interface, then refresh:
+Add a topic, then refresh:
 
 ```bash
+sonar topics add "AI agents"
 sonar refresh
-sonar --hours 24
+sonar feed --hours 24
 ```
 
 Sonar rebuilds your social graph, indexes recent tweets, and generates suggestions matched against your topics and interest profile.
@@ -125,11 +144,14 @@ Sonar rebuilds your social graph, indexes recent tweets, and generates suggestio
 Combine `--json` output with `jq` to pipe Sonar content wherever you want:
 
 ```bash
-# Get today's top suggestions as JSON
-sonar --hours 24 --json | jq '.[] | {author, text, url}'
+# Get today's feed as JSON
+sonar feed --hours 24 --json | jq '.[] | {author: .tweet.user.username, text: .tweet.text}'
 
 # Summarize with an LLM
-sonar --json | jq '.[].text' | your-summarizer-script
+sonar feed --json | jq '.[].tweet.text' | your-summarizer-script
+
+# Stream high-score items to a file
+sonar feed --follow --json | jq --unbuffered 'select(.score > 0.7)' >> highlights.jsonl
 ```
 
 ### Monitor the pipeline
@@ -146,7 +168,7 @@ sonar status --watch
 Work through suggestions without leaving the terminal:
 
 ```bash
-sonar                    # interactive mode is on by default
+sonar                    # interactive triage is on by default
 sonar --no-interactive   # disable for scripting
 ```
 
@@ -254,10 +276,10 @@ sonar topics
 
 ## Command Reference
 
-### Default — view suggestions
+### Default — triage suggestions
 
 ```bash
-sonar                                # show suggestions (last 12h, limit 20)
+sonar                                # interactive triage (default)
 sonar --hours 24                     # widen time window
 sonar --days 3                       # last 3 days
 sonar --kind bookmarks               # default | bookmarks | followers | following
@@ -266,13 +288,50 @@ sonar --json                         # raw JSON output
 sonar --no-interactive               # disable interactive mode
 ```
 
+### Feed — read-only view
+
+```bash
+sonar feed                           # read-only feed (last 12h, limit 20)
+sonar feed --hours 48 --limit 50     # widen window
+sonar feed --kind bookmarks          # bookmarks | followers | following
+sonar feed --render table            # table layout
+sonar feed --json | jq .             # pipe to jq
+```
+
+#### Streaming with --follow
+
+Poll for new items continuously and stream them to your terminal or another process:
+
+```bash
+sonar feed --follow                  # poll every 30s, visual cards
+sonar feed --follow --interval 10    # poll every 10s
+sonar feed --follow --json           # NDJSON stream (one JSON per line)
+sonar feed --follow --json | jq --unbuffered '.score'
+```
+
+Press `q` to quit follow mode.
+
 ### Topics
 
 ```bash
 sonar topics                         # list all topics
 sonar topics --json                  # JSON output
+sonar topics add "AI agents"         # add a topic
 sonar topics edit --id <id> --name "New Name"
 ```
+
+#### AI-powered topic suggestions
+
+Let Sonar suggest new topics based on your existing interests and recent feed:
+
+```bash
+sonar topics suggest                 # interactive — y/n/q per suggestion
+sonar topics suggest --count 3       # limit to 3 suggestions
+sonar topics suggest --vendor anthropic  # use Anthropic instead of OpenAI
+sonar topics suggest --json          # raw suggestions as JSON
+```
+
+Requires `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` depending on vendor.
 
 ### Pipeline
 
@@ -311,6 +370,9 @@ sonar sync                           # sync data to local SQLite
 |---|---|---|
 | `SONAR_API_KEY` | Yes | Auth token from [sonar.8640p.info](https://sonar.8640p.info/) |
 | `SONAR_API_URL` | No | GraphQL endpoint (default: production API) |
+| `SONAR_MAX_RETRIES` | No | Max retry attempts on transient failures (default: 3, 0 to disable) |
+| `OPENAI_API_KEY` | For `topics suggest` | Required when using OpenAI vendor for AI suggestions |
+| `ANTHROPIC_API_KEY` | For `topics suggest` | Required when using Anthropic vendor for AI suggestions |
 
 ## Local Files
 
@@ -342,4 +404,4 @@ Locally, it skips when offline; in CI (`CI=true`) it is enforced.
 Set `SONAR_API_KEY` in your environment or run `sonar config setup key=<YOUR_KEY>`.
 
 **`Unable to reach server, please try again shortly.`**
-Check your network connection and API availability.
+Check your network connection and API availability. The CLI automatically retries transient failures (network errors, 5xx) up to 3 times with exponential backoff. Use `--debug` to see retry attempts. Set `SONAR_MAX_RETRIES=0` to disable retries.
