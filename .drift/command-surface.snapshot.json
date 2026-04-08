@@ -1,6 +1,6 @@
 {
   "source": "src/commands/**/*.tsx",
-  "commandCount": 23,
+  "commandCount": 27,
   "commands": [
     "sonar",
     "sonar archive",
@@ -17,6 +17,7 @@
     "sonar config set",
     "sonar config setup",
     "sonar config skill",
+    "sonar feed",
     "sonar later",
     "sonar refresh",
     "sonar skip",
@@ -24,6 +25,9 @@
     "sonar sync bookmarks",
     "sonar topics",
     "sonar topics add",
-    "sonar topics edit"
+    "sonar topics delete",
+    "sonar topics edit",
+    "sonar topics suggest",
+    "sonar topics view"
   ]
 }
