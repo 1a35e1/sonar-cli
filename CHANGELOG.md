@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-08
+
+### Added
+
+- **`sonar account` — multi-account management** — `add`, `switch`, `remove`, `rename` commands with `~/.sonar/accounts.json`. Random fun names (bouncy-rabbit) for unnamed accounts.
+- **`sonar refresh` composable flags** — `--bookmarks`, `--likes`, `--graph`, `--tweets`, `--suggestions` for selective pipeline execution. Any combo works.
+- **`sonar sync likes`** — sync likes from X (mirrors `sync bookmarks`).
+- **`sonar data` namespace** — `pull`, `backup`, `restore`, `verify`, `path`, `sql` moved from `config data`.
+- **Help banner** — spaced `S O N A R` header with version on `--help`.
+- **Account rename** — `sonar account rename <old> <new>` with hint on random names.
+
+### Changed
+
+- **WASM SQLite** — replaced `better-sqlite3` (native) with `node-sqlite3-wasm`. No more Node version mismatch errors, works on any platform.
+- **`SONAR_API_KEY` removed** — auth is now exclusively via `sonar account add <key>`. Existing `config.json` tokens auto-migrate.
+- **`config data` → `data`** — flatter namespace. `download`/`sync` merged into `sonar data pull`.
+- **`interests` → `topics`** — consistent naming in local SQLite schema.
+- **Pulse spinner** — switched to `unicode-animations` pulse spinner.
+
+### Fixed
+
+- **Pipeline auth errors** — detect expired X OAuth, show re-auth guidance, surface backend error messages.
+- **Pipeline error visibility** — backend now exposes error field in status endpoint, stale errors cleared on new runs.
+
 ## [0.3.1] - 2026-04-08
 
 ### Added
