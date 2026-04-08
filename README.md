@@ -229,10 +229,39 @@ sonar topics suggest --json          # raw suggestions as JSON
 
 Requires `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` depending on vendor.
 
-### Pipeline
+### Account
 
 ```bash
-sonar refresh                        # full pipeline: graph → tweets → suggestions
+sonar account                        # list accounts, * marks active
+sonar account add <key>              # add account (random name)
+sonar account add <key> --alias work # add with custom name
+sonar account switch <name>          # switch active account
+sonar account rename <old> <new>     # rename an account
+sonar account remove <name>          # remove (--force if active)
+```
+
+### Refresh
+
+```bash
+sonar refresh                        # full pipeline (all steps)
+sonar refresh --bookmarks            # just sync bookmarks from X
+sonar refresh --likes                # just sync likes from X
+sonar refresh --graph                # just rebuild social graph
+sonar refresh --tweets               # just index tweets
+sonar refresh --suggestions          # just regenerate suggestions
+sonar refresh --likes --bookmarks    # any combo of flags
+```
+
+### Sync
+
+```bash
+sonar sync bookmarks                 # trigger server to sync bookmarks from X
+sonar sync likes                     # trigger server to sync likes from X
+```
+
+### Status
+
+```bash
 sonar status                         # account status, queue activity
 sonar status --watch                 # poll every 2s
 ```
@@ -245,17 +274,24 @@ sonar later --id <suggestion_id>     # save for later
 sonar archive --id <suggestion_id>   # archive a suggestion
 ```
 
+### Data
+
+```bash
+sonar data pull                      # download feed/suggestions/topics to local SQLite
+sonar data backup                    # backup local DB
+sonar data restore --from <path>     # restore from backup
+sonar data verify                    # integrity check
+sonar data path                      # show DB location
+sonar data sql                       # query helper
+```
+
 ### Config
 
 ```bash
 sonar config                         # show current config
-sonar config setup key=<API_KEY>     # set API key
-```
-
-### Sync
-
-```bash
-sonar sync bookmarks                 # sync bookmarks to local SQLite
+sonar config setup --key=<API_KEY>   # legacy setup
+sonar config set vendor anthropic    # set AI vendor
+sonar config skill --install         # install OpenClaw skill (--force to overwrite)
 ```
 
 ---
