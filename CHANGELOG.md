@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-08
+
+### Added
+
+- **feat: `sonar feed` command** — Read-only feed view with `--hours`, `--days`, `--limit`, `--kind`, `--render`, `--width`, `--json` flags. No triage, pure pipe-friendly output.
+- **feat: `sonar feed --follow`** — Continuous polling mode with NDJSON streaming (`--follow --json`), configurable interval (`--interval`), and xid-based deduplication.
+- **feat: `sonar topics suggest`** — AI-powered topic suggestions using OpenAI or Anthropic. Interactive accept/reject UI with `--count`, `--vendor`, and `--json` flags.
+- **feat: GraphQL client retry with exponential backoff** — Automatic retries on network errors and 5xx with jittered backoff. Configurable via `SONAR_MAX_RETRIES` env var.
+- **feat: trusted publishing via GitHub Actions** — `publish.yml` workflow triggers on GitHub release, publishes with OIDC provenance. No OTP required.
+- **feat: `sonar topics view`, `topics delete`** — Full topic CRUD from the CLI.
+- **feat: `sonar sync bookmarks`** — Sync bookmarks from X.
+- **feat: `status --watch` improvements** — Press `r` to refresh, `q` to quit, pipeline step progress, deferred job counts.
+- **feat: drift prevention checks** — CI gate for schema, surface, docs, and data compatibility drift.
+
+### Fixed
+
+- **fix: config nuke deletes real local database** — Previously left orphaned DB file.
+- **fix: align CLI queries with current topics schema** — Renamed `interests` → `topics` throughout.
+- **fix: suppress spinner in `--json` mode** — Clean JSON output safe to pipe.
+- **fix: unknown command shows error** — Instead of falling through silently.
+
+### Changed
+
+- **chore: renamed `release` skill to `release-cli`** — Clearer naming, switched to trusted publishing pipeline.
+- **refactor: `interests` → `topics` rename** — Consistent naming across CLI commands, queries, and user-facing strings.
+
 ## [0.2.1] - 2026-03-04
 
 ### Added
