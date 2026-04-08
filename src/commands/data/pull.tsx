@@ -9,7 +9,7 @@ import {
   upsertTweet,
   upsertFeedItem,
   upsertSuggestion,
-  upsertInterest,
+  upsertTopic,
   getSyncState,
   setSyncState,
 } from '../../lib/db.js'
@@ -19,7 +19,7 @@ import type { FeedTweet, Suggestion, Interest } from '../../lib/data-queries.js'
 interface SyncResult {
   feedCount: number
   suggestionsCount: number
-  interestsCount: number
+  topicsCount: number
   isSync?: boolean
   deltaFeed?: number
   deltaSuggestions?: number
@@ -53,14 +53,14 @@ export default function DataSync() {
             upsertTweet(freshDb, s.tweet)
             upsertSuggestion(freshDb, { suggestionId: s.suggestionId, tweetId: s.tweet.id, score: s.score, status: s.status, relevance: null, projectsMatched: s.projectsMatched })
           }
-          for (const i of interestsResult.topics) {
-            upsertInterest(freshDb, i)
+          for (const t of interestsResult.topics) {
+            upsertTopic(freshDb, t)
           }
 
           setSyncState(freshDb, 'last_synced_at', new Date().toISOString())
           freshDb.close()
 
-          setResult({ feedCount: feedResult.feed.length, suggestionsCount: suggestionsResult.suggestions.length, interestsCount: interestsResult.topics.length })
+          setResult({ feedCount: feedResult.feed.length, suggestionsCount: suggestionsResult.suggestions.length, topicsCount: interestsResult.topics.length })
           return
         }
 
@@ -74,8 +74,8 @@ export default function DataSync() {
           gql<{ suggestions: Suggestion[] }>(SUGGESTIONS_QUERY, { status: null, limit: 500 }),
         ])
 
-        const prevFeedCount = (db.prepare('SELECT COUNT(*) as n FROM feed_items').get() as { n: number }).n
-        const prevSuggestionsCount = (db.prepare('SELECT COUNT(*) as n FROM suggestions').get() as { n: number }).n
+        const prevFeedCount = (db.get('SELECT COUNT(*) as n FROM feed_items') as { n: number }).n
+        const prevSuggestionsCount = (db.get('SELECT COUNT(*) as n FROM suggestions') as { n: number }).n
 
         for (const item of feedResult.feed) {
           upsertTweet(db, item.tweet)
@@ -88,14 +88,14 @@ export default function DataSync() {
 
         setSyncState(db, 'last_synced_at', new Date().toISOString())
 
-        const newFeedCount = (db.prepare('SELECT COUNT(*) as n FROM feed_items').get() as { n: number }).n
-        const newSuggestionsCount = (db.prepare('SELECT COUNT(*) as n FROM suggestions').get() as { n: number }).n
+        const newFeedCount = (db.get('SELECT COUNT(*) as n FROM feed_items') as { n: number }).n
+        const newSuggestionsCount = (db.get('SELECT COUNT(*) as n FROM suggestions') as { n: number }).n
         db.close()
 
         setResult({
           feedCount: newFeedCount,
           suggestionsCount: newSuggestionsCount,
-          interestsCount: 0,
+          topicsCount: 0,
           isSync: true,
           deltaFeed: newFeedCount - prevFeedCount,
           deltaSuggestions: newSuggestionsCount - prevSuggestionsCount,
@@ -138,8 +138,8 @@ export default function DataSync() {
         <Text dimColor> feed items  </Text>
         <Text color="cyan">{result.suggestionsCount}</Text>
         <Text dimColor> suggestions  </Text>
-        <Text color="cyan">{result.interestsCount}</Text>
-        <Text dimColor> interests</Text>
+        <Text color="cyan">{result.topicsCount}</Text>
+        <Text dimColor> topics</Text>
       </Text>
     </Box>
   )

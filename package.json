@@ -36,13 +36,13 @@
     "prepublishOnly": "tsc"
   },
   "dependencies": {
-    "better-sqlite3": "^11",
     "date-fns": "4.1.0",
     "graphql": "^16.12.0",
     "graphql-request": "^7.4.0",
     "ink": "^6",
     "ink-link": "^5.0.0",
     "ink-table": "^3.1.0",
+    "node-sqlite3-wasm": "^0.8.55",
     "pastel": "^3.0.0",
     "react": "^19",
     "unicode-animations": "^1.0.3",
@@ -51,7 +51,6 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.5",
     "@graphql-codegen/typescript-graphql-request": "^6.4.0",
-    "@types/better-sqlite3": "^7",
     "@types/node": "^22",
     "@types/react": "^19",
     "biome": "^0.3.3",
