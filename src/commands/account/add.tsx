@@ -26,7 +26,7 @@ export const args = zod.tuple([
 ])
 
 export const options = zod.object({
-  name: zod.string().optional().describe('Account name (default: random)'),
+  alias: zod.string().optional().describe('Account alias (default: random)'),
   'api-url': zod.string().optional().describe('Custom API URL'),
 })
 
@@ -42,7 +42,7 @@ export default function AccountAdd({ args: [key], options: flags }: Props) {
     }
 
     const data = readAccounts()
-    let name = flags.name ?? randomName()
+    let name = flags.alias ?? randomName()
 
     // Avoid collisions with existing names
     while (data.accounts[name]) {
