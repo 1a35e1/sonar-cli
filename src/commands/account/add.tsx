@@ -60,7 +60,11 @@ export default function AccountAdd({ args: [key], options: flags }: Props) {
     }
 
     writeAccounts(data)
-    process.stdout.write(`Account "${name}" added${data.active === name ? ' (active)' : ''}\n`)
+    const isActive = data.active === name ? ' (active)' : ''
+    process.stdout.write(`Account "${name}" added${isActive}\n`)
+    if (!flags.alias) {
+      process.stdout.write(`tip  rename with: sonar account rename ${name} <your-name>\n`)
+    }
     process.exit(0)
   }, [])
 
