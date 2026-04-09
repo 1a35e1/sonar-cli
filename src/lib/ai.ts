@@ -1,5 +1,43 @@
 import type { Vendor } from './config.js'
 
+// ─── Vendor Response Shapes ───────────────────────────────────────────────────
+
+interface VendorErrorResponse {
+  error?: { message?: string }
+}
+
+/** OpenAI Responses API (gpt-4o with tools) */
+interface OpenAIResponsesContent {
+  type: string
+  text?: string
+}
+interface OpenAIResponsesOutputItem {
+  type: string
+  content?: OpenAIResponsesContent[]
+}
+interface OpenAIResponsesAPIResponse {
+  output?: OpenAIResponsesOutputItem[]
+}
+
+/** OpenAI Chat Completions API */
+interface OpenAIChatChoice {
+  message: { role: string; content: string | null }
+}
+interface OpenAIChatCompletionResponse {
+  choices?: OpenAIChatChoice[]
+}
+
+/** Anthropic Messages API */
+interface AnthropicContentBlock {
+  type: string
+  text: string
+}
+interface AnthropicMessagesResponse {
+  content: AnthropicContentBlock[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function extractJSON(text: string): string {
   // Strip markdown fences if present
   const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
@@ -109,15 +147,15 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<GeneratedInte
     'OpenAI',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`OpenAI error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorResponse
+        throw new Error(`OpenAI error: ${err?.error?.message ?? res.status}`)
       }
-      const data = await res.json()
+      const data = (await res.json()) as OpenAIResponsesAPIResponse
       const text = data.output
-        ?.filter((b: any) => b.type === 'message')
-        .flatMap((b: any) => b.content)
-        .filter((c: any) => c.type === 'output_text')
-        .map((c: any) => c.text)
+        ?.filter((b) => b.type === 'message')
+        .flatMap((b) => b.content ?? [])
+        .filter((c) => c.type === 'output_text')
+        .map((c) => c.text ?? '')
         .join('') ?? ''
       return JSON.parse(extractJSON(text)) as GeneratedInterest
     },
@@ -145,10 +183,10 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<GeneratedI
     'Anthropic',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorResponse
+        throw new Error(`Anthropic error: ${err?.error?.message ?? res.status}`)
       }
-      const data = await res.json()
+      const data = (await res.json()) as AnthropicMessagesResponse
       return JSON.parse(extractJSON(data.content[0].text)) as GeneratedInterest
     },
   )
@@ -185,10 +223,10 @@ async function callOpenAIReply(tweetText: string, userPrompt: string, apiKey: st
     'OpenAI',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`OpenAI error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorResponse
+        throw new Error(`OpenAI error: ${err?.error?.message ?? res.status}`)
       }
-      const data = await res.json()
+      const data = (await res.json()) as OpenAIChatCompletionResponse
       const text = data.choices?.[0]?.message?.content ?? ''
       return JSON.parse(extractJSON(text)) as GeneratedReply
     },
@@ -220,10 +258,10 @@ async function callAnthropicReply(tweetText: string, userPrompt: string, apiKey:
     'Anthropic',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorResponse
+        throw new Error(`Anthropic error: ${err?.error?.message ?? res.status}`)
       }
-      const data = await res.json()
+      const data = (await res.json()) as AnthropicMessagesResponse
       return JSON.parse(extractJSON(data.content[0].text)) as GeneratedReply
     },
   )
@@ -315,15 +353,15 @@ export async function generateTopicSuggestions(
       'OpenAI',
       async (res) => {
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(`OpenAI error: ${(err as any)?.error?.message ?? res.status}`)
+          const err = (await res.json().catch(() => ({}))) as VendorErrorResponse
+          throw new Error(`OpenAI error: ${err?.error?.message ?? res.status}`)
         }
-        const data = await res.json()
+        const data = (await res.json()) as OpenAIResponsesAPIResponse
         const text = data.output
-          ?.filter((b: any) => b.type === 'message')
-          .flatMap((b: any) => b.content)
-          .filter((c: any) => c.type === 'output_text')
-          .map((c: any) => c.text)
+          ?.filter((b) => b.type === 'message')
+          .flatMap((b) => b.content ?? [])
+          .filter((c) => c.type === 'output_text')
+          .map((c) => c.text ?? '')
           .join('') ?? ''
         return JSON.parse(extractJSONArray(text)) as GeneratedInterest[]
       },
@@ -353,10 +391,10 @@ export async function generateTopicSuggestions(
       'Anthropic',
       async (res) => {
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
+          const err = (await res.json().catch(() => ({}))) as VendorErrorResponse
+          throw new Error(`Anthropic error: ${err?.error?.message ?? res.status}`)
         }
-        const data = await res.json()
+        const data = (await res.json()) as AnthropicMessagesResponse
         return JSON.parse(extractJSONArray(data.content[0].text)) as GeneratedInterest[]
       },
     )
