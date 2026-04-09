@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
+import { validateTopicName, validateDescription } from '../../lib/validation.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Topic } from './index.js'
 
@@ -71,6 +72,16 @@ export default function TopicEdit({ args: [id], options: flags }: Props) {
   useEffect(() => {
     async function run() {
       try {
+        if (flags.name !== undefined) {
+          const nameErr = validateTopicName(flags.name)
+          if (nameErr) { setError(nameErr); return }
+        }
+
+        if (flags.description !== undefined) {
+          const descErr = validateDescription(flags.description)
+          if (descErr) { setError(descErr); return }
+        }
+
         const existing = await fetchById(id)
         const name = flags.name ?? existing.name
         const description = flags.description ?? existing.description ?? null
