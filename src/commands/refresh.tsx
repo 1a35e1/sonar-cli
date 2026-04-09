@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Box, Text, useApp } from 'ink'
-import { gql } from '../lib/client.js'
+import { gql, RateLimitError } from '../lib/client.js'
 import { getToken, getApiUrl } from '../lib/config.js'
 import { Spinner } from '../components/Spinner.js'
 
@@ -11,11 +11,12 @@ export const options = zod.object({
   graph: zod.boolean().default(false).describe('Rebuild social graph'),
   tweets: zod.boolean().default(false).describe('Index tweets across network'),
   suggestions: zod.boolean().default(false).describe('Regenerate suggestions'),
+  wait: zod.boolean().default(false).describe('Auto-retry after rate limit resets (shows countdown)'),
 })
 
 type Props = { options: zod.infer<typeof options> }
 
-type Status = 'pending' | 'running' | 'ok' | 'failed' | 'auth-failed'
+type Status = 'pending' | 'running' | 'ok' | 'failed' | 'auth-failed' | 'rate-limited'
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -32,6 +33,7 @@ export default function Refresh({ options: flags }: Props) {
   const [status, setStatus] = useState<Status>('pending')
   const [error, setError] = useState<string | null>(null)
   const [batchId, setBatchId] = useState<string | null>(null)
+  const [rateLimitResetAt, setRateLimitResetAt] = useState<Date | null>(null)
 
   // Build steps array from flags — null means run all
   const selectedSteps: string[] = []
@@ -49,7 +51,7 @@ export default function Refresh({ options: flags }: Props) {
         const result = await gql<{ refresh: string }>(REFRESH_MUTATION, {
           days: 1,
           steps,
-        })
+        }, { wait: flags.wait })
         setBatchId(result.refresh)
 
         // Brief poll to catch instant pipeline failures (e.g. expired X auth)
@@ -75,15 +77,20 @@ export default function Refresh({ options: flags }: Props) {
 
         setStatus('ok')
       } catch (err) {
-        setStatus('failed')
-        setError(err instanceof Error ? err.message : String(err))
+        if (err instanceof RateLimitError) {
+          setRateLimitResetAt(err.resetAt)
+          setStatus('rate-limited')
+        } else {
+          setStatus('failed')
+          setError(err instanceof Error ? err.message : String(err))
+        }
       }
     }
     run()
   }, [])
 
   useEffect(() => {
-    if (status === 'ok' || status === 'failed' || status === 'auth-failed') exit()
+    if (status === 'ok' || status === 'failed' || status === 'auth-failed' || status === 'rate-limited') exit()
   }, [status])
 
   const label = steps ? steps.join(', ') : 'full pipeline'
@@ -101,6 +108,20 @@ export default function Refresh({ options: flags }: Props) {
         </Text>
         <Text dimColor>
           Then run <Text color="cyan">sonar refresh</Text> to retry.
+        </Text>
+      </Box>
+    )
+  }
+
+  if (status === 'rate-limited') {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="yellow">X API rate limit reached</Text>
+        {rateLimitResetAt && (
+          <Text dimColor>Resets at <Text color="cyan">{rateLimitResetAt.toUTCString()}</Text></Text>
+        )}
+        <Text dimColor>
+          Run <Text color="cyan">sonar refresh --wait</Text> to auto-retry when the limit resets.
         </Text>
       </Box>
     )

@@ -3,13 +3,14 @@ import zod from 'zod'
 import { Box, Text, useApp, useInput } from 'ink'
 import { formatDistanceToNow } from 'date-fns'
 import { getToken, getApiUrl } from '../lib/config.js'
-import { gql } from '../lib/client.js'
+import { gql, RateLimitError } from '../lib/client.js'
 import { Spinner } from '../components/Spinner.js'
 import type { Account } from '../components/AccountCard.js'
 
 export const options = zod.object({
   watch: zod.boolean().default(false).describe('Poll and refresh every 2 seconds'),
   json: zod.boolean().default(false).describe('Raw JSON output'),
+  wait: zod.boolean().default(false).describe('Auto-retry after rate limit resets (shows countdown)'),
 })
 
 type Props = { options: zod.infer<typeof options> }
@@ -100,7 +101,7 @@ export default function Status({ options: flags }: Props) {
             signal: controller.signal,
             headers: { Authorization: `Bearer ${token}` },
           }),
-          gql<{ me: Account; usage: Usage | null; suggestionCounts: SuggestionCounts }>(GQL_QUERY),
+          gql<{ me: Account; usage: Usage | null; suggestionCounts: SuggestionCounts }>(GQL_QUERY, {}, { wait: flags.wait }),
         ])
         clearTimeout(timer)
         if (!statusRes.ok) throw new Error(`HTTP ${statusRes.status}`)
@@ -117,6 +118,9 @@ export default function Status({ options: flags }: Props) {
         clearTimeout(timer)
         if (err instanceof DOMException && err.name === 'AbortError') {
           setError('Request timed out (10s)')
+        } else if (err instanceof RateLimitError) {
+          const resetMsg = err.resetAt ? ` (resets at ${err.resetAt.toUTCString()})` : ''
+          setError(`X API rate limit reached${resetMsg}. Use --wait to auto-retry.`)
         } else {
           setError(err instanceof Error ? err.message : String(err))
         }
