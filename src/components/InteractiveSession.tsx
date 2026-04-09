@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { Box, Text, useInput, useStdout } from 'ink'
+import TextInput from 'ink-text-input'
 import { gql } from '../lib/client.js'
 import { relativeTime, TweetCard } from './TweetCard.js'
 import { getFeedWidth } from '../lib/config.js'
@@ -50,7 +51,7 @@ interface TriageSessionProps {
   fetchMore?: (offset: number) => Promise<TriageItem[]>
 }
 
-type ActionLabel = 'dismissed' | 'saved' | null
+type ActionLabel = 'read' | 'saved' | 'archived' | 'skipped' | null
 
 const UNDO_WINDOW_MS = 10_000
 
@@ -73,6 +74,8 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   const [acting, setActing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState<PendingAction | null>(null)
+  const [skipPrompt, setSkipPrompt] = useState(false)
+  const [skipReason, setSkipReason] = useState('')
 
   // Fetch next page when 3 items from the end
   useEffect(() => {
@@ -104,7 +107,7 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   }
 
   const act = useCallback(
-    (status: 'ARCHIVED' | 'SKIPPED', label: ActionLabel) => {
+    (status: 'READ' | 'LATER' | 'ARCHIVED' | 'SKIPPED', label: ActionLabel) => {
       const item = items[index]
 
       // Flush any previous pending action immediately
@@ -138,18 +141,35 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
     setLastAction(null)
   }, [pending])
 
+  const submitSkip = useCallback(() => {
+    if (skipReason.trim()) {
+      // TODO: send reason to backend when API supports it
+      process.stderr.write(`[skip reason] ${current?.tweet?.xid}: ${skipReason.trim()}\n`)
+    }
+    setSkipPrompt(false)
+    setSkipReason('')
+    act('SKIPPED', 'skipped')
+  }, [skipReason, act, current])
+
   useInput(
     (input, key) => {
+      if (skipPrompt) return // TextInput handles input
+
       if (done) {
         if (input === 'q') process.exit(0)
         if (input === 'u') undo()
         return
       }
 
-      if (key.return || input === ' ' || input === 'd' || input === 'n') {
-        act('SKIPPED', 'dismissed')
+      if (key.return || input === ' ' || input === 'n') {
+        act('READ', 'read')
       } else if (input === 's') {
-        act('ARCHIVED', 'saved')
+        act('LATER', 'saved')
+      } else if (input === 'a') {
+        act('ARCHIVED', 'archived')
+      } else if (input === '-') {
+        setSkipPrompt(true)
+        setSkipReason('')
       } else if (input === 'u') {
         undo()
       } else if (input === 'o') {
@@ -175,6 +195,39 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
 
   const canTriage = !!current.suggestionId
 
+  if (skipPrompt) {
+    return (
+      <Box flexDirection="column">
+        <Box marginBottom={1} gap={3}>
+          <Text dimColor>{index + 1} / {total}</Text>
+        </Box>
+
+        <TweetCard
+          item={{ score: current.score, matchedKeywords: current.matchedKeywords, tweet: current.tweet }}
+          termWidth={termWidth}
+          cardWidth={cardWidth}
+          isLast={true}
+        />
+
+        <Box flexDirection="column" marginTop={1}>
+          <Divider width={termWidth} />
+          <Box marginTop={1} gap={1}>
+            <Text color="yellow">Why is this a bad recommendation?</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>{'> '}</Text>
+            <TextInput
+              value={skipReason}
+              onChange={setSkipReason}
+              onSubmit={submitSkip}
+              placeholder="reason (enter to skip)"
+            />
+          </Box>
+        </Box>
+      </Box>
+    )
+  }
+
   return (
     <Box flexDirection="column">
       <Box marginBottom={1} gap={3}>
@@ -196,6 +249,8 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
             <>
               <Text dimColor><Text color="white">n</Text> next</Text>
               <Text dimColor><Text color="white">s</Text> save</Text>
+              <Text dimColor><Text color="white">a</Text> archive</Text>
+              <Text dimColor><Text color="white">-</Text> bad rec</Text>
               <Text dimColor><Text color="white">o</Text> open</Text>
               <Text dimColor><Text color="white">q</Text> quit</Text>
             </>

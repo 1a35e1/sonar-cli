@@ -26,6 +26,9 @@ importers:
       ink-table:
         specifier: ^3.1.0
         version: 3.1.0(ink@6.8.0(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)
+      ink-text-input:
+        specifier: ^6.0.0
+        version: 6.0.0(ink@6.8.0(@types/react@19.2.14)(react@19.2.4))(react@19.2.4)
       node-sqlite3-wasm:
         specifier: ^0.8.55
         version: 0.8.55
@@ -1567,6 +1570,13 @@ packages:
     peerDependencies:
       ink: '>=3.0.0'
       react: '>=16.8.0'
+
+  ink-text-input@6.0.0:
+    resolution: {integrity: sha512-Fw64n7Yha5deb1rHY137zHTAbSTNelUKuB5Kkk2HACXEtwIHBCf9OH2tP/LQ9fRYTl1F0dZgbW0zPnZk6FA9Lw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      ink: '>=5'
+      react: '>=18'
 
   ink@6.8.0:
     resolution: {integrity: sha512-sbl1RdLOgkO9isK42WCZlJCFN9hb++sX9dsklOvfd1YQ3bQ2AiFu12Q6tFlr0HvEUvzraJntQCCpfEoUe9DSzA==}
@@ -4314,6 +4324,13 @@ snapshots:
       ink: 6.8.0(@types/react@19.2.14)(react@19.2.4)
       object-hash: 2.2.0
       react: 19.2.4
+
+  ink-text-input@6.0.0(ink@6.8.0(@types/react@19.2.14)(react@19.2.4))(react@19.2.4):
+    dependencies:
+      chalk: 5.6.2
+      ink: 6.8.0(@types/react@19.2.14)(react@19.2.4)
+      react: 19.2.4
+      type-fest: 4.41.0
 
   ink@6.8.0(@types/react@19.2.14)(react@19.2.4):
     dependencies:
