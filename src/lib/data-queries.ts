@@ -104,8 +104,8 @@ export const INTERESTS_QUERY = `
 `
 
 export const BOOKMARKS_QUERY = `
-  query DataBookmarks($limit: Int, $offset: Int) {
-    bookmarks(limit: $limit, offset: $offset) {
+  query DataBookmarks($limit: Int, $offset: Int, $since: String) {
+    bookmarks(limit: $limit, offset: $offset, since: $since) {
       id
       xid
       text
@@ -124,8 +124,8 @@ export const BOOKMARKS_QUERY = `
 `
 
 export const LIKES_QUERY = `
-  query DataLikes($limit: Int, $offset: Int) {
-    likes(limit: $limit, offset: $offset) {
+  query DataLikes($limit: Int, $offset: Int, $since: String) {
+    likes(limit: $limit, offset: $offset, since: $since) {
       id
       xid
       text

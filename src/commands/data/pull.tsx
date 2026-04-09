@@ -18,6 +18,26 @@ import {
 import { FEED_QUERY, SUGGESTIONS_QUERY, INTERESTS_QUERY, BOOKMARKS_QUERY, LIKES_QUERY } from '../../lib/data-queries.js'
 import type { FeedTweet, Suggestion, Interest, Tweet } from '../../lib/data-queries.js'
 
+const PAGE_SIZE = 100
+
+/** Paginate a query that returns an array, fetching all pages. */
+async function fetchAll<T>(
+  query: string,
+  field: string,
+  baseVars: Record<string, unknown>,
+): Promise<T[]> {
+  const all: T[] = []
+  let offset = 0
+  while (true) {
+    const res = await gql<Record<string, T[]>>(query, { ...baseVars, limit: PAGE_SIZE, offset })
+    const page = res[field] ?? []
+    all.push(...page)
+    if (page.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+  return all
+}
+
 interface PullResult {
   feedCount: number
   suggestionsCount: number
@@ -27,10 +47,13 @@ interface PullResult {
   isIncremental?: boolean
   deltaFeed?: number
   deltaSuggestions?: number
+  deltaBookmarks?: number
+  deltaLikes?: number
 }
 
 export default function DataPull() {
   const [result, setResult] = useState<PullResult | null>(null)
+  const [status, setStatus] = useState('Starting...')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,33 +63,39 @@ export default function DataPull() {
         const lastSyncedAt = getSyncState(db, 'last_synced_at')
 
         if (!lastSyncedAt) {
+          // Fresh download
           db.close()
           if (existsSync(DB_PATH)) unlinkSync(DB_PATH)
           const freshDb = openDb()
-          const [feedRes, suggestionsRes, topicsRes, bookmarksRes, likesRes] = await Promise.all([
-            gql<{ feed: FeedTweet[] }>(FEED_QUERY, { hours: null, days: 7, limit: 500 }),
-            gql<{ suggestions: Suggestion[] }>(SUGGESTIONS_QUERY, { status: null, limit: 500 }),
-            gql<{ topics: Interest[] }>(INTERESTS_QUERY),
-            gql<{ bookmarks: Tweet[] }>(BOOKMARKS_QUERY, { limit: 500, offset: 0 }),
-            gql<{ likes: Tweet[] }>(LIKES_QUERY, { limit: 500, offset: 0 }),
-          ])
 
-          for (const item of feedRes.feed) {
+          setStatus('Pulling feed...')
+          const feed = await fetchAll<FeedTweet>(FEED_QUERY, 'feed', { hours: null, days: 7 })
+          for (const item of feed) {
             upsertTweet(freshDb, item.tweet)
             upsertFeedItem(freshDb, { tweetId: item.tweet.id, score: item.score, matchedKeywords: item.matchedKeywords })
           }
-          for (const s of suggestionsRes.suggestions) {
+
+          setStatus('Pulling suggestions...')
+          const suggestions = await fetchAll<Suggestion>(SUGGESTIONS_QUERY, 'suggestions', { status: null })
+          for (const s of suggestions) {
             upsertTweet(freshDb, s.tweet)
             upsertSuggestion(freshDb, { suggestionId: s.suggestionId, tweetId: s.tweet.id, score: s.score, status: s.status, relevance: null, projectsMatched: s.projectsMatched })
           }
-          for (const t of topicsRes.topics) {
-            upsertTopic(freshDb, t)
-          }
-          for (const bm of bookmarksRes.bookmarks) {
+
+          setStatus('Pulling topics...')
+          const { topics } = await gql<{ topics: Interest[] }>(INTERESTS_QUERY)
+          for (const t of topics) upsertTopic(freshDb, t)
+
+          setStatus('Pulling bookmarks...')
+          const bookmarks = await fetchAll<Tweet>(BOOKMARKS_QUERY, 'bookmarks', { since: null })
+          for (const bm of bookmarks) {
             upsertTweet(freshDb, bm)
             upsertBookmark(freshDb, bm.id)
           }
-          for (const lk of likesRes.likes) {
+
+          setStatus('Pulling likes...')
+          const likes = await fetchAll<Tweet>(LIKES_QUERY, 'likes', { since: null })
+          for (const lk of likes) {
             upsertTweet(freshDb, lk)
             upsertLike(freshDb, lk.id)
           }
@@ -75,43 +104,50 @@ export default function DataPull() {
           freshDb.close()
 
           setResult({
-            feedCount: feedRes.feed.length,
-            suggestionsCount: suggestionsRes.suggestions.length,
-            topicsCount: topicsRes.topics.length,
-            bookmarksCount: bookmarksRes.bookmarks.length,
-            likesCount: likesRes.likes.length,
+            feedCount: feed.length,
+            suggestionsCount: suggestions.length,
+            topicsCount: topics.length,
+            bookmarksCount: bookmarks.length,
+            likesCount: likes.length,
           })
           return
         }
 
+        // Incremental sync
         const hoursSinceSync = Math.min(
           Math.ceil((Date.now() - new Date(lastSyncedAt).getTime()) / 3600000),
           168,
         )
 
-        const [feedRes, suggestionsRes, bookmarksRes, likesRes] = await Promise.all([
-          gql<{ feed: FeedTweet[] }>(FEED_QUERY, { hours: hoursSinceSync, days: null, limit: 500 }),
-          gql<{ suggestions: Suggestion[] }>(SUGGESTIONS_QUERY, { status: null, limit: 500 }),
-          gql<{ bookmarks: Tweet[] }>(BOOKMARKS_QUERY, { limit: 500, offset: 0 }),
-          gql<{ likes: Tweet[] }>(LIKES_QUERY, { limit: 500, offset: 0 }),
-        ])
-
         const prevFeedCount = (db.get('SELECT COUNT(*) as n FROM feed_items') as { n: number }).n
         const prevSuggestionsCount = (db.get('SELECT COUNT(*) as n FROM suggestions') as { n: number }).n
+        const prevBookmarksCount = (db.get('SELECT COUNT(*) as n FROM bookmarks') as { n: number }).n
+        const prevLikesCount = (db.get('SELECT COUNT(*) as n FROM likes') as { n: number }).n
 
-        for (const item of feedRes.feed) {
+        setStatus('Pulling feed...')
+        const feed = await fetchAll<FeedTweet>(FEED_QUERY, 'feed', { hours: hoursSinceSync, days: null })
+        for (const item of feed) {
           upsertTweet(db, item.tweet)
           upsertFeedItem(db, { tweetId: item.tweet.id, score: item.score, matchedKeywords: item.matchedKeywords })
         }
-        for (const s of suggestionsRes.suggestions) {
+
+        setStatus('Pulling suggestions...')
+        const suggestions = await fetchAll<Suggestion>(SUGGESTIONS_QUERY, 'suggestions', { status: null })
+        for (const s of suggestions) {
           upsertTweet(db, s.tweet)
           upsertSuggestion(db, { suggestionId: s.suggestionId, tweetId: s.tweet.id, score: s.score, status: s.status, relevance: null, projectsMatched: s.projectsMatched })
         }
-        for (const bm of bookmarksRes.bookmarks) {
+
+        setStatus('Pulling bookmarks...')
+        const bookmarks = await fetchAll<Tweet>(BOOKMARKS_QUERY, 'bookmarks', { since: lastSyncedAt })
+        for (const bm of bookmarks) {
           upsertTweet(db, bm)
           upsertBookmark(db, bm.id)
         }
-        for (const lk of likesRes.likes) {
+
+        setStatus('Pulling likes...')
+        const likes = await fetchAll<Tweet>(LIKES_QUERY, 'likes', { since: lastSyncedAt })
+        for (const lk of likes) {
           upsertTweet(db, lk)
           upsertLike(db, lk.id)
         }
@@ -120,19 +156,21 @@ export default function DataPull() {
 
         const newFeedCount = (db.get('SELECT COUNT(*) as n FROM feed_items') as { n: number }).n
         const newSuggestionsCount = (db.get('SELECT COUNT(*) as n FROM suggestions') as { n: number }).n
-        const bookmarksCount = (db.get('SELECT COUNT(*) as n FROM bookmarks') as { n: number }).n
-        const likesCount = (db.get('SELECT COUNT(*) as n FROM likes') as { n: number }).n
+        const newBookmarksCount = (db.get('SELECT COUNT(*) as n FROM bookmarks') as { n: number }).n
+        const newLikesCount = (db.get('SELECT COUNT(*) as n FROM likes') as { n: number }).n
         db.close()
 
         setResult({
           feedCount: newFeedCount,
           suggestionsCount: newSuggestionsCount,
           topicsCount: 0,
-          bookmarksCount,
-          likesCount,
+          bookmarksCount: newBookmarksCount,
+          likesCount: newLikesCount,
           isIncremental: true,
           deltaFeed: newFeedCount - prevFeedCount,
           deltaSuggestions: newSuggestionsCount - prevSuggestionsCount,
+          deltaBookmarks: newBookmarksCount - prevBookmarksCount,
+          deltaLikes: newLikesCount - prevLikesCount,
         })
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
@@ -142,7 +180,7 @@ export default function DataPull() {
   }, [])
 
   if (error) return <Text color="red">Error: {error}</Text>
-  if (!result) return <Spinner label="Pulling data..." />
+  if (!result) return <Spinner label={status} />
 
   if (result.isIncremental) {
     return (
@@ -153,13 +191,13 @@ export default function DataPull() {
         </Box>
         <Text>
           <Text color="green">feed</Text>
-          <Text dimColor> +{result.deltaFeed ?? 0} ({result.feedCount} total)  </Text>
+          <Text dimColor> +{result.deltaFeed ?? 0} ({result.feedCount})  </Text>
           <Text color="green">suggestions</Text>
-          <Text dimColor> +{result.deltaSuggestions ?? 0} ({result.suggestionsCount} total)  </Text>
+          <Text dimColor> +{result.deltaSuggestions ?? 0} ({result.suggestionsCount})  </Text>
           <Text color="green">bookmarks</Text>
-          <Text dimColor> {result.bookmarksCount}  </Text>
+          <Text dimColor> +{result.deltaBookmarks ?? 0} ({result.bookmarksCount})  </Text>
           <Text color="green">likes</Text>
-          <Text dimColor> {result.likesCount}</Text>
+          <Text dimColor> +{result.deltaLikes ?? 0} ({result.likesCount})</Text>
         </Text>
       </Box>
     )
