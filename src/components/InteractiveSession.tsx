@@ -52,12 +52,16 @@ interface TriageSessionProps {
 
 type ActionLabel = 'dismissed' | 'saved' | null
 
+// How long the user has to press 'u' and cancel an action before it is
+// committed to the server. 10 s is long enough to feel safe but short enough
+// that the feed doesn't feel laggy when switching items quickly.
 const UNDO_WINDOW_MS = 10_000
 
 interface PendingAction {
   timer: ReturnType<typeof setTimeout>
   suggestionId: string
   status: string
+  // Saved so undo() can jump back to the exact card that was acted on.
   index: number
 }
 
@@ -74,7 +78,10 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState<PendingAction | null>(null)
 
-  // Fetch next page when 3 items from the end
+  // Prefetch the next page while the user still has a few cards to review so
+  // there is no perceptible pause when they reach the end of the current batch.
+  // The threshold of 3 gives enough time for the round-trip without loading too
+  // eagerly when the inbox is small.
   useEffect(() => {
     if (!fetchMore || loading) return
     if (index >= items.length - 3 && items.length < total) {
@@ -90,7 +97,9 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
     }
   }, [index, items.length, total, loading])
 
-  // Flush pending on unmount
+  // If the user quits mid-session (e.g. presses 'q'), commit any deferred
+  // action immediately rather than losing it. This runs in a cleanup effect so
+  // it fires both on normal unmounts and on process exit via Ink's teardown.
   useEffect(() => {
     return () => { if (pending) { clearTimeout(pending.timer); commitAction(pending) } }
   }, [pending])
@@ -138,6 +147,24 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
     setLastAction(null)
   }, [pending])
 
+  // Keyboard handler — two distinct states:
+  //
+  // DONE state (inbox zero): only 'q' (quit) and 'u' (undo last action) are
+  // active. All other keys are ignored so the user doesn't accidentally trigger
+  // something after finishing.
+  //
+  // ACTIVE state (reviewing cards):
+  //   n / d / <space> / <return> — dismiss (SKIPPED): marks the suggestion as
+  //     not interesting; multiple aliases because muscle memory varies.
+  //   s — save (ARCHIVED): bookmarks the suggestion for later.
+  //   u — undo: cancels the deferred mutation and jumps back one card.
+  //   o — open in browser: constructs the tweet URL and calls macOS `open`.
+  //       Falls back silently on non-macOS systems where `open` is missing.
+  //   q — quit: exits the process immediately (pending action is flushed first
+  //       by the unmount effect above).
+  //
+  // { isActive: !acting } suspends input while a mutation is in flight (acting)
+  // so rapid key-presses don't queue up duplicate mutations.
   useInput(
     (input, key) => {
       if (done) {

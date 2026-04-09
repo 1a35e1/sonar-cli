@@ -6,12 +6,20 @@ interface Flags {
   timeoutMs?: number
 }
 
+// Default to 3 retries: enough to survive a brief server blip or a single
+// bad request cycle without making the user wait through many slow failures.
+// Set SONAR_MAX_RETRIES=0 to disable retries entirely (useful in scripts where
+// you want to fail fast and handle errors in the calling process).
 const MAX_RETRIES = Math.max(0, Number(process.env.SONAR_MAX_RETRIES) || 3)
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// Jittered exponential backoff: delay doubles with each attempt (1 s, 2 s,
+// 4 s, …) but is capped at 10 s so a flaky server doesn't make the CLI feel
+// frozen. The random ±500 ms jitter prevents a thundering-herd effect if
+// multiple CLI processes retry at the same instant.
 function retryDelay(attempt: number): number {
   const base = Math.min(1000 * 2 ** attempt, 10_000)
   return base + Math.random() * 500
@@ -34,6 +42,8 @@ export async function gql<T>(
 ): Promise<T> {
   const token = getToken()
   const url = getApiUrl()
+  // 20 s covers normal API latency with comfortable headroom. Callers can
+  // raise this for known slow queries (e.g. large dataset exports).
   const timeoutMs = flags.timeoutMs ?? 20_000
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {

@@ -83,9 +83,15 @@ Optimise every field for semantic density and current relevance, not readability
 
 Respond ONLY with valid JSON, no markdown, no explanation.`
 
-// OpenAI uses web_search_preview which can legitimately take 30-60 s.
+// OpenAI requests use the web_search_preview tool, which performs a live web
+// search before generating the response. This browsing step can legitimately
+// take 30–60 s on its own, so the total budget is set at 90 s to leave room
+// for the generation phase without false-positive timeouts.
 export const OPENAI_TIMEOUT_MS = 90_000
-// Anthropic calls are simpler — 60 s is generous.
+
+// Anthropic requests do not browse the web; they generate purely from model
+// weights. 60 s is already generous for a Haiku-class model and keeps
+// unresponsive requests from hanging the CLI for too long.
 export const ANTHROPIC_TIMEOUT_MS = 60_000
 
 /**
