@@ -102,3 +102,43 @@ export const INTERESTS_QUERY = `
     }
   }
 `
+
+export const BOOKMARKS_QUERY = `
+  query DataBookmarks($limit: Int, $offset: Int) {
+    bookmarks(limit: $limit, offset: $offset) {
+      id
+      xid
+      text
+      createdAt
+      likeCount
+      retweetCount
+      replyCount
+      user {
+        displayName
+        username
+        followersCount
+        followingCount
+      }
+    }
+  }
+`
+
+export const LIKES_QUERY = `
+  query DataLikes($limit: Int, $offset: Int) {
+    likes(limit: $limit, offset: $offset) {
+      id
+      xid
+      text
+      createdAt
+      likeCount
+      retweetCount
+      replyCount
+      user {
+        displayName
+        username
+        followersCount
+        followingCount
+      }
+    }
+  }
+`

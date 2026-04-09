@@ -35,6 +35,14 @@ export function openDb(): Db {
       keywords TEXT, related_topics TEXT,
       created_at TEXT, updated_at TEXT, synced_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS bookmarks (
+      tweet_id TEXT PRIMARY KEY,
+      synced_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS likes (
+      tweet_id TEXT PRIMARY KEY,
+      synced_at TEXT
+    );
     CREATE TABLE IF NOT EXISTS sync_state (
       key TEXT PRIMARY KEY, value TEXT
     );
@@ -121,6 +129,14 @@ export function upsertTopic(db: Db, topic: {
     topic.createdAt, topic.updatedAt,
     new Date().toISOString()],
   )
+}
+
+export function upsertBookmark(db: Db, tweetId: string): void {
+  db.run('INSERT OR REPLACE INTO bookmarks (tweet_id, synced_at) VALUES (?, ?)', [tweetId, new Date().toISOString()])
+}
+
+export function upsertLike(db: Db, tweetId: string): void {
+  db.run('INSERT OR REPLACE INTO likes (tweet_id, synced_at) VALUES (?, ?)', [tweetId, new Date().toISOString()])
 }
 
 export function getSyncState(db: Db, key: string): string | null {
