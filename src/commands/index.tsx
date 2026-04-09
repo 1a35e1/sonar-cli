@@ -6,9 +6,8 @@ import { Spinner } from '../components/Spinner.js'
 import { TriageSession } from '../components/InteractiveSession.js'
 import type { TriageItem } from '../components/InteractiveSession.js'
 import { gql } from '../lib/client.js'
-import { getFeedRender, getFeedWidth, getVendor } from '../lib/config.js'
+import { getFeedRender, getFeedWidth } from '../lib/config.js'
 import { TweetCard } from '../components/TweetCard.js'
-import type { FeedTweet } from '../components/TweetCard.js'
 
 export const args = zod.tuple([]).rest(zod.string())
 
@@ -44,19 +43,6 @@ interface SuggestionItem {
 interface UnifiedItem extends TriageItem {
   source: 'suggestion' | 'feed'
 }
-
-const FEED_QUERY = `
-  query Feed($hours: Int, $days: Int, $limit: Int, $kind: String) {
-    feed(hours: $hours, days: $days, limit: $limit, kind: $kind) {
-      score
-      matchedKeywords
-      tweet {
-        id xid text createdAt likeCount retweetCount replyCount
-        user { displayName username followersCount followingCount }
-      }
-    }
-  }
-`
 
 const INBOX_QUERY = `
   query Inbox($status: SuggestionStatus, $limit: Int, $offset: Int) {
@@ -104,59 +90,27 @@ export default function Sonar({ options: flags, args: positionalArgs }: Props) {
           return
         }
 
-        const [feedRes, inboxRes] = await Promise.all([
-          gql<{ feed: FeedTweet[] }>(FEED_QUERY, {
-            hours: flags.hours ?? null,
-            days: flags.days ?? null,
-            limit,
-            kind: flags.kind ?? 'default',
-          }),
-          gql<{ suggestions: SuggestionItem[]; suggestionCounts: { inbox: number } }>(INBOX_QUERY, { status: 'INBOX', limit, offset: 0 }),
-        ])
+        const inboxRes = await gql<{ suggestions: SuggestionItem[]; suggestionCounts: { inbox: number } }>(INBOX_QUERY, { status: 'INBOX', limit, offset: 0 })
 
         const inboxTotal = inboxRes.suggestionCounts.inbox
 
-        // Merge: deduplicate by xid, suggestions take priority, sort by score
-        const seen = new Set<string>()
-        const merged: UnifiedItem[] = []
-
-        for (const s of inboxRes.suggestions) {
-          if (!seen.has(s.tweet.xid)) {
-            seen.add(s.tweet.xid)
-            merged.push({
-              key: s.tweet.xid,
-              score: s.score,
-              source: 'suggestion',
-              suggestionId: s.suggestionId,
-              matchedKeywords: [],
-              tweet: {
-                id: s.tweet.id,
-                xid: s.tweet.xid,
-                text: s.tweet.text,
-                createdAt: s.tweet.createdAt,
-                likeCount: s.tweet.likeCount,
-                retweetCount: s.tweet.retweetCount,
-                replyCount: s.tweet.replyCount,
-                user: s.tweet.user,
-              },
-            })
-          }
-        }
-
-        for (const f of feedRes.feed) {
-          if (!seen.has(f.tweet.xid)) {
-            seen.add(f.tweet.xid)
-            merged.push({
-              key: f.tweet.xid,
-              score: f.score,
-              source: 'feed',
-              matchedKeywords: f.matchedKeywords,
-              tweet: f.tweet,
-            })
-          }
-        }
-
-        merged.sort((a, b) => b.score - a.score)
+        const merged: UnifiedItem[] = inboxRes.suggestions.map(s => ({
+          key: s.tweet.xid,
+          score: s.score,
+          source: 'suggestion' as const,
+          suggestionId: s.suggestionId,
+          matchedKeywords: [],
+          tweet: {
+            id: s.tweet.id,
+            xid: s.tweet.xid,
+            text: s.tweet.text,
+            createdAt: s.tweet.createdAt,
+            likeCount: s.tweet.likeCount,
+            retweetCount: s.tweet.retweetCount,
+            replyCount: s.tweet.replyCount,
+            user: s.tweet.user,
+          },
+        }))
 
         if (flags.json) {
           process.stdout.write(JSON.stringify(merged, null, 2) + '\n')
