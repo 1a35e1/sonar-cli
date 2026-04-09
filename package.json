@@ -1,6 +1,6 @@
 {
   "name": "@1a35e1/sonar-cli",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "X social graph CLI for signal filtering and curation",
   "type": "module",
   "bin": {
