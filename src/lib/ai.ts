@@ -1,16 +1,22 @@
 import type { Vendor } from './config.js'
 
-function extractJSON(text: string): string {
-  // Strip markdown fences if present
+/**
+ * Extracts the outermost JSON object from a string that may contain markdown
+ * fences or surrounding prose. Exported for testing and use as a fallback.
+ */
+export function extractJSON(text: string): string {
   const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  // Find the outermost JSON object in case there's surrounding prose
   const start = stripped.indexOf('{')
   const end = stripped.lastIndexOf('}')
   if (start === -1 || end === -1) throw new Error('No JSON object found in response')
   return stripped.slice(start, end + 1)
 }
 
-function extractJSONArray(text: string): string {
+/**
+ * Extracts the outermost JSON array from a string that may contain markdown
+ * fences or surrounding prose. Exported for testing and use as a fallback.
+ */
+export function extractJSONArray(text: string): string {
   const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
   const start = stripped.indexOf('[')
   const end = stripped.lastIndexOf(']')
@@ -18,11 +24,43 @@ function extractJSONArray(text: string): string {
   return stripped.slice(start, end + 1)
 }
 
+/**
+ * Parses a JSON string into type T. Throws a clear error (not a raw SyntaxError)
+ * when the response cannot be parsed, so callers see a useful message.
+ */
+export function parseJSON<T>(text: string, context = 'AI response'): T {
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error(
+      `Failed to parse ${context} as JSON. ` +
+      `Received: ${text.length > 200 ? text.slice(0, 200) + '…' : text}`,
+    )
+  }
+}
+
 export interface GeneratedInterest {
   name: string
   description: string
   keywords: string[]
   relatedTopics: string[]
+}
+
+const INTEREST_TOOL_SCHEMA = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' },
+    description: { type: 'string' },
+    keywords: { type: 'array', items: { type: 'string' } },
+    relatedTopics: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['name', 'description', 'keywords', 'relatedTopics'],
+  additionalProperties: false,
+}
+
+const INTEREST_ARRAY_TOOL_SCHEMA = {
+  type: 'array',
+  items: INTEREST_TOOL_SCHEMA,
 }
 
 const SYSTEM_PROMPT = `You generate structured interest profiles for a social intelligence tool. These profiles are embedded into a vector database and matched against tweets and people on X (Twitter). Every field must be optimised for semantic similarity search — not for human reading.
@@ -101,6 +139,14 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<GeneratedInte
       body: JSON.stringify({
         model: 'gpt-4o',
         tools: [{ type: 'web_search_preview' }],
+        text: {
+          format: {
+            type: 'json_schema',
+            name: 'interest',
+            schema: INTEREST_TOOL_SCHEMA,
+            strict: true,
+          },
+        },
         instructions: SYSTEM_PROMPT,
         input: prompt,
       }),
@@ -119,7 +165,7 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<GeneratedInte
         .filter((c: any) => c.type === 'output_text')
         .map((c: any) => c.text)
         .join('') ?? ''
-      return JSON.parse(extractJSON(text)) as GeneratedInterest
+      return parseJSON<GeneratedInterest>(text, 'OpenAI interest response')
     },
   )
 }
@@ -139,6 +185,14 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<GeneratedI
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: prompt }],
+        tools: [
+          {
+            name: 'generate_interest',
+            description: 'Return a structured interest profile',
+            input_schema: INTEREST_TOOL_SCHEMA,
+          },
+        ],
+        tool_choice: { type: 'tool', name: 'generate_interest' },
       }),
     },
     ANTHROPIC_TIMEOUT_MS,
@@ -149,7 +203,11 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<GeneratedI
         throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
       }
       const data = await res.json()
-      return JSON.parse(extractJSON(data.content[0].text)) as GeneratedInterest
+      const toolBlock = data.content?.find((b: any) => b.type === 'tool_use')
+      if (!toolBlock) {
+        throw new Error('Anthropic response did not include a tool_use block with structured output')
+      }
+      return toolBlock.input as GeneratedInterest
     },
   )
 }
@@ -159,6 +217,15 @@ export interface GeneratedReply {
 }
 
 const REPLY_SYSTEM_PROMPT = `You are a concise, contextual tweet reply writer. Write a single reply tweet (max 280 characters) that is natural, engaging, and relevant to the original tweet. Do not use hashtags unless essential. Do not include any explanation or preamble. Return only valid JSON with a single "reply" field containing the reply text.`
+
+const REPLY_TOOL_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string' },
+  },
+  required: ['reply'],
+  additionalProperties: false,
+}
 
 async function callOpenAIReply(tweetText: string, userPrompt: string, apiKey: string): Promise<GeneratedReply> {
   const userContent = userPrompt
@@ -179,6 +246,7 @@ async function callOpenAIReply(tweetText: string, userPrompt: string, apiKey: st
           { role: 'system', content: REPLY_SYSTEM_PROMPT },
           { role: 'user', content: userContent },
         ],
+        response_format: { type: 'json_object' },
       }),
     },
     OPENAI_TIMEOUT_MS,
@@ -190,7 +258,7 @@ async function callOpenAIReply(tweetText: string, userPrompt: string, apiKey: st
       }
       const data = await res.json()
       const text = data.choices?.[0]?.message?.content ?? ''
-      return JSON.parse(extractJSON(text)) as GeneratedReply
+      return parseJSON<GeneratedReply>(text, 'OpenAI reply response')
     },
   )
 }
@@ -214,6 +282,14 @@ async function callAnthropicReply(tweetText: string, userPrompt: string, apiKey:
         max_tokens: 512,
         system: REPLY_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userContent }],
+        tools: [
+          {
+            name: 'generate_reply',
+            description: 'Return a structured tweet reply',
+            input_schema: REPLY_TOOL_SCHEMA,
+          },
+        ],
+        tool_choice: { type: 'tool', name: 'generate_reply' },
       }),
     },
     ANTHROPIC_TIMEOUT_MS,
@@ -224,7 +300,11 @@ async function callAnthropicReply(tweetText: string, userPrompt: string, apiKey:
         throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
       }
       const data = await res.json()
-      return JSON.parse(extractJSON(data.content[0].text)) as GeneratedReply
+      const toolBlock = data.content?.find((b: any) => b.type === 'tool_use')
+      if (!toolBlock) {
+        throw new Error('Anthropic response did not include a tool_use block with structured output')
+      }
+      return toolBlock.input as GeneratedReply
     },
   )
 }
@@ -307,6 +387,14 @@ export async function generateTopicSuggestions(
         body: JSON.stringify({
           model: 'gpt-4o',
           tools: [{ type: 'web_search_preview' }],
+          text: {
+            format: {
+              type: 'json_schema',
+              name: 'interest_suggestions',
+              schema: INTEREST_ARRAY_TOOL_SCHEMA,
+              strict: true,
+            },
+          },
           instructions: SUGGEST_SYSTEM_PROMPT,
           input: prompt,
         }),
@@ -325,7 +413,7 @@ export async function generateTopicSuggestions(
           .filter((c: any) => c.type === 'output_text')
           .map((c: any) => c.text)
           .join('') ?? ''
-        return JSON.parse(extractJSONArray(text)) as GeneratedInterest[]
+        return parseJSON<GeneratedInterest[]>(text, 'OpenAI suggestions response')
       },
     )
   }
@@ -347,6 +435,21 @@ export async function generateTopicSuggestions(
           max_tokens: 4096,
           system: SUGGEST_SYSTEM_PROMPT,
           messages: [{ role: 'user', content: prompt }],
+          tools: [
+            {
+              name: 'generate_suggestions',
+              description: 'Return an array of structured interest profiles',
+              input_schema: {
+                type: 'object',
+                properties: {
+                  suggestions: INTEREST_ARRAY_TOOL_SCHEMA,
+                },
+                required: ['suggestions'],
+                additionalProperties: false,
+              },
+            },
+          ],
+          tool_choice: { type: 'tool', name: 'generate_suggestions' },
         }),
       },
       ANTHROPIC_TIMEOUT_MS,
@@ -357,7 +460,11 @@ export async function generateTopicSuggestions(
           throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
         }
         const data = await res.json()
-        return JSON.parse(extractJSONArray(data.content[0].text)) as GeneratedInterest[]
+        const toolBlock = data.content?.find((b: any) => b.type === 'tool_use')
+        if (!toolBlock) {
+          throw new Error('Anthropic response did not include a tool_use block with structured output')
+        }
+        return toolBlock.input.suggestions as GeneratedInterest[]
       },
     )
   }
