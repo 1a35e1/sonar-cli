@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import zod from 'zod'
-import { Box, Text, useStdout } from 'ink'
+import { Box, Text, useApp, useStdout } from 'ink'
 import { Spinner } from '../components/Spinner.js'
 import { HistoryBrowser } from '../components/HistoryBrowser.js'
 import type { HistoryItem } from '../components/HistoryBrowser.js'
@@ -28,25 +28,12 @@ export const options = zod.object({
 
 type Props = { options: zod.infer<typeof options> }
 
-interface SuggestionItem {
+// Matches the shape returned by the suggestions GraphQL query
+interface SuggestionResponse {
   suggestionId: string
   score: number
   status: string
-  tweet: {
-    id: string
-    xid: string
-    text: string
-    createdAt: string
-    likeCount: number
-    retweetCount: number
-    replyCount: number
-    user: {
-      displayName: string
-      username: string | null
-      followersCount: number | null
-      followingCount: number | null
-    }
-  }
+  tweet: HistoryItem['tweet']
 }
 
 const HISTORY_QUERY = `
@@ -93,6 +80,7 @@ function countForStatus(
 }
 
 export default function History({ options: flags }: Props) {
+  const { exit } = useApp()
   const [items, setItems] = useState<HistoryItem[] | null>(null)
   const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -111,7 +99,7 @@ export default function History({ options: flags }: Props) {
         if (statusFilter) vars.status = statusFilter
 
         const res = await gql<{
-          suggestions: SuggestionItem[]
+          suggestions: SuggestionResponse[]
           suggestionCounts: {
             archived: number; later: number; read: number
             skipped: number; replied: number; total: number; inbox: number
@@ -136,7 +124,8 @@ export default function History({ options: flags }: Props) {
 
         if (flags.json) {
           process.stdout.write(JSON.stringify(mapped, null, 2) + '\n')
-          process.exit(0)
+          exit()
+          return
         }
 
         setItems(mapped)
@@ -166,7 +155,7 @@ export default function History({ options: flags }: Props) {
       const vars: Record<string, unknown> = { limit: pageSize, offset }
       if (statusFilter) vars.status = statusFilter
 
-      const res = await gql<{ suggestions: SuggestionItem[] }>(HISTORY_QUERY, vars)
+      const res = await gql<{ suggestions: SuggestionResponse[] }>(HISTORY_QUERY, vars)
       const filtered = statusFilter
         ? res.suggestions
         : res.suggestions.filter(s => s.status !== 'INBOX')

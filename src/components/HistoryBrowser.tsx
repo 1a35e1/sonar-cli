@@ -1,31 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react'
-import { Box, Text, useInput, useStdout } from 'ink'
-import { gql } from '../lib/client.js'
-import { relativeTime, TweetCard } from './TweetCard.js'
+import React, { useState, useEffect } from 'react'
+import { Box, Text, useApp, useInput, useStdout } from 'ink'
+import { TweetCard } from './TweetCard.js'
 import { getFeedWidth } from '../lib/config.js'
-import { execSync } from 'child_process'
+import { openUrl } from '../lib/open.js'
+import type { TriageItem } from './InteractiveSession.js'
 
-export interface HistoryItem {
-  key: string
-  score: number
-  suggestionId: string
+export interface HistoryItem extends TriageItem {
   status: string
-  matchedKeywords: string[]
-  tweet: {
-    id: string
-    xid: string
-    text: string
-    createdAt: string
-    likeCount: number
-    retweetCount: number
-    replyCount: number
-    user: {
-      displayName: string
-      username: string | null
-      followersCount: number | null
-      followingCount: number | null
-    }
-  }
 }
 
 interface HistoryBrowserProps {
@@ -51,6 +32,7 @@ function Divider({ width }: { width: number }) {
 }
 
 export function HistoryBrowser({ items: initialItems, total: initialTotal, fetchMore }: HistoryBrowserProps) {
+  const { exit } = useApp()
   const { stdout } = useStdout()
   const termWidth = stdout.columns ?? 100
   const cardWidth = getFeedWidth()
@@ -77,12 +59,10 @@ export function HistoryBrowser({ items: initialItems, total: initialTotal, fetch
   }, [index, items.length, total, loading])
 
   const current = items[index]
-  const atStart = index === 0
-  const atEnd = index >= items.length - 1 && items.length >= total
 
   useInput((input, key) => {
     if (input === 'q') {
-      process.exit(0)
+      exit()
     } else if (input === 'n' || key.return || input === ' ' || key.downArrow || key.rightArrow) {
       if (index < items.length - 1 || items.length < total) {
         setIndex(i => Math.min(i + 1, items.length - 1))
@@ -92,7 +72,7 @@ export function HistoryBrowser({ items: initialItems, total: initialTotal, fetch
     } else if (input === 'o' && current) {
       const handle = current.tweet.user.username ?? current.tweet.user.displayName
       const url = `https://x.com/${handle}/status/${current.tweet.id}`
-      try { execSync(`open "${url}"`) } catch {}
+      openUrl(url)
     }
   })
 
