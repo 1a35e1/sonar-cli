@@ -103,42 +103,16 @@ export const INTERESTS_QUERY = `
   }
 `
 
-export const BOOKMARKS_QUERY = `
-  query DataBookmarks($limit: Int, $offset: Int, $since: String) {
-    bookmarks(limit: $limit, offset: $offset, since: $since) {
-      id
-      xid
-      text
-      createdAt
-      likeCount
-      retweetCount
-      replyCount
-      user {
-        displayName
-        username
-        followersCount
-        followingCount
-      }
+export const DATA_EXPORT_QUERY = `
+  query DataExport($model: String!, $limit: Int, $cursor: String) {
+    dataExport(model: $model, limit: $limit, cursor: $cursor) {
+      cursor
+      items
     }
   }
 `
 
-export const LIKES_QUERY = `
-  query DataLikes($limit: Int, $offset: Int, $since: String) {
-    likes(limit: $limit, offset: $offset, since: $since) {
-      id
-      xid
-      text
-      createdAt
-      likeCount
-      retweetCount
-      replyCount
-      user {
-        displayName
-        username
-        followersCount
-        followingCount
-      }
-    }
-  }
-`
+export interface DataExportPage {
+  cursor: string | null
+  items: Record<string, unknown>[]
+}
