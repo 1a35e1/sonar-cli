@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
+import { validateTopicName, validateDescription } from '../../lib/validation.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Topic } from './index.js'
 
@@ -48,6 +49,14 @@ export default function TopicsAdd({ args: [name], options: flags }: Props) {
   useEffect(() => {
     async function run() {
       try {
+        const nameErr = validateTopicName(name)
+        if (nameErr) { setError(nameErr); return }
+
+        if (flags.description !== undefined) {
+          const descErr = validateDescription(flags.description)
+          if (descErr) { setError(descErr); return }
+        }
+
         const result = await gql<{ createOrUpdateTopic: Topic }>(CREATE_MUTATION, {
           name,
           description: flags.description ?? null,
