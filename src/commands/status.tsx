@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text, useApp, useInput } from 'ink'
 import { formatDistanceToNow } from 'date-fns'
 import { getToken, getApiUrl } from '../lib/config.js'
@@ -7,13 +6,13 @@ import { gql, RateLimitError } from '../lib/client.js'
 import { Spinner } from '../components/Spinner.js'
 import type { Account } from '../components/AccountCard.js'
 
-export const options = zod.object({
-  watch: zod.boolean().default(false).describe('Poll and refresh every 2 seconds'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-  wait: zod.boolean().default(false).describe('Auto-retry after rate limit resets (shows countdown)'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    watch: boolean
+    json: boolean
+    wait: boolean
+  }
+}
 
 interface QueueCounts { queued: number; running: number; deferred?: number }
 interface DimensionUsage { used: number; limit: number | null; atLimit: boolean }

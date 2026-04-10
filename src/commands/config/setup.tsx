@@ -1,13 +1,12 @@
 import React, { useEffect } from 'react'
 import { Text } from 'ink'
 import { writeConfig, configExists } from '../../lib/config.js'
-import zod from 'zod'
 
-export const options = zod.object({
-  key: zod.string().describe('API key to use').optional(),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    key?: string
+  }
+}
 
 export default function Setup({ options: flags }: Props) {
   useEffect(() => {

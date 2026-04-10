@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text } from 'ink'
 import { unlinkSync, existsSync } from 'node:fs'
 import { gql } from '../../lib/client.js'
@@ -8,12 +7,12 @@ import { DB_PATH, openDb, insertExportRows, getRowCount } from '../../lib/db.js'
 import { DATA_EXPORT_QUERY } from '../../lib/data-queries.js'
 import type { DataExportPage } from '../../lib/data-queries.js'
 
-export const options = zod.object({
-  debug: zod.boolean().default(false).describe('Show request timing'),
-  fresh: zod.boolean().default(false).describe('Delete local DB and pull everything'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    debug: boolean
+    fresh: boolean
+  }
+}
 
 const MODELS = ['tweets', 'users', 'suggestions', 'bookmarks', 'likes', 'topics']
 

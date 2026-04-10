@@ -1,15 +1,14 @@
 import { useEffect } from 'react'
 import { configExists, deleteConfig, deleteDatabase } from '../../lib/config.js'
 import { Text } from 'ink'
-import zod from 'zod'
 import { existsSync } from 'node:fs'
 import { DB_PATH } from '../../lib/db.js'
 
-export const options = zod.object({
-  confirm: zod.boolean().default(false).describe('Pass to confirm deletion'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    confirm: boolean
+  }
+}
 
 export default function Nuke({ options: flags }: Props) {
   useEffect(() => {

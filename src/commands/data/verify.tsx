@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { existsSync } from 'node:fs'
 import { DB_PATH } from '../../lib/db.js'
 import { integrityCheck } from '../../lib/data-utils.js'
 
-export const options = zod.object({
-  path: zod.string().optional().describe('Database path (default: local sonar DB path)'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    path?: string
+    json: boolean
+  }
+}
 
 export default function DataVerify({ options: flags }: Props) {
   const [error, setError] = useState<string | null>(null)

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react'
-import zod from 'zod'
 import { Box, Text, useApp, useInput, useStdout } from 'ink'
 import { Banner } from '../components/Banner.js'
 import { Spinner } from '../components/Spinner.js'
@@ -8,20 +7,20 @@ import { getFeedRender, getFeedWidth } from '../lib/config.js'
 import { TweetCard, FeedTable } from '../components/TweetCard.js'
 import type { FeedTweet } from '../components/TweetCard.js'
 
-export const options = zod.object({
-  hours: zod.number().optional().describe('Look back N hours (default: 12)'),
-  days: zod.number().optional().describe('Look back N days'),
-  limit: zod.number().optional().describe('Result limit (default: 20)'),
-  offset: zod.number().optional().describe('Skip first N results (default: 0)'),
-  kind: zod.string().optional().describe('Feed source: default|bookmarks|followers|following'),
-  render: zod.string().optional().describe('Output layout: card|table'),
-  width: zod.number().optional().describe('Card width in columns'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-  follow: zod.boolean().default(false).describe('Continuously poll for new items'),
-  interval: zod.number().optional().describe('Poll interval in seconds (default: 30)'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    hours?: number
+    days?: number
+    limit?: number
+    offset?: number
+    kind?: string
+    render?: string
+    width?: number
+    json: boolean
+    follow: boolean
+    interval?: number
+  }
+}
 
 const FEED_QUERY = `
   query Feed($hours: Int, $days: Int, $limit: Int, $offset: Int, $kind: String) {

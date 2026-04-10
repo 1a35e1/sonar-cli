@@ -1,13 +1,12 @@
 import React from 'react'
-import zod from 'zod'
 import { Box, Text } from 'ink'
 import { readAccounts, migrateToAccounts } from '../../lib/config.js'
 
-export const options = zod.object({
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    json: boolean
+  }
+}
 
 function maskToken(token: string): string {
   if (token.length <= 8) return '***'

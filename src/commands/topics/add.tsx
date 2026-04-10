@@ -1,21 +1,17 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
 import { validateTopicName, validateDescription } from '../../lib/validation.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Topic } from './index.js'
 
-export const args = zod.tuple([
-  zod.string().describe('Topic name or phrase'),
-])
-
-export const options = zod.object({
-  description: zod.string().optional().describe('Optional description (auto-generated if omitted)'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { args: zod.infer<typeof args>; options: zod.infer<typeof options> }
+type Props = {
+  args: [string]
+  options: {
+    description?: string
+    json: boolean
+  }
+}
 
 const CREATE_MUTATION = `
   mutation CreateOrUpdateTopic(

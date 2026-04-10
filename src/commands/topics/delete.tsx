@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
 import { Spinner } from '../../components/Spinner.js'
 
-export const args = zod.tuple([
-  zod.string().describe('Topic ID'),
-])
-
-export const options = zod.object({
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { args: zod.infer<typeof args>; options: zod.infer<typeof options> }
+type Props = {
+  args: [string]
+  options: {
+    json: boolean
+  }
+}
 
 const DELETE_MUTATION = `
   mutation DeleteTopic($nanoId: String!) {

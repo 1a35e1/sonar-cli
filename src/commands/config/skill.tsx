@@ -1,15 +1,14 @@
 import React, { useEffect } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { writeSkillTo } from '../../lib/skill.js'
 
-export const options = zod.object({
-  install: zod.boolean().default(false).describe('Install to ~/.claude/skills/sonar/SKILL.md'),
-  dest: zod.string().optional().describe('Write to a custom path'),
-  force: zod.boolean().default(false).describe('Overwrite even if file was modified'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    install: boolean
+    dest?: string
+    force: boolean
+  }
+}
 
 export default function Skill({ options: flags }: Props) {
   useEffect(() => {

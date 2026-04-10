@@ -1,6 +1,6 @@
 {
   "source": "src/commands/**/*.tsx",
-  "commandCount": 30,
+  "commandCount": 31,
   "commands": [
     "sonar",
     "sonar account",
@@ -16,6 +16,7 @@
     "sonar config setup",
     "sonar config skill",
     "sonar data backup",
+    "sonar data export",
     "sonar data path",
     "sonar data pull",
     "sonar data restore",

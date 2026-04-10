@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text, useApp } from 'ink'
 import { gql, RateLimitError } from '../lib/client.js'
 import { getToken, getApiUrl } from '../lib/config.js'
 import { Spinner } from '../components/Spinner.js'
 
-export const options = zod.object({
-  bookmarks: zod.boolean().default(false).describe('Sync bookmarks from X'),
-  likes: zod.boolean().default(false).describe('Sync likes from X'),
-  graph: zod.boolean().default(false).describe('Rebuild social graph'),
-  tweets: zod.boolean().default(false).describe('Index tweets across network'),
-  suggestions: zod.boolean().default(false).describe('Regenerate suggestions'),
-  wait: zod.boolean().default(false).describe('Auto-retry after rate limit resets (shows countdown)'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    bookmarks: boolean
+    likes: boolean
+    graph: boolean
+    tweets: boolean
+    suggestions: boolean
+    wait: boolean
+  }
+}
 
 type Status = 'pending' | 'running' | 'ok' | 'failed' | 'auth-failed' | 'rate-limited'
 

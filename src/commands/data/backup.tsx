@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { existsSync, mkdirSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { DB_PATH } from '../../lib/db.js'
 import { integrityCheck, copyDbWithSidecars } from '../../lib/data-utils.js'
 
-export const options = zod.object({
-  out: zod.string().optional().describe('Backup output path (default: ~/.sonar/data-backup-<timestamp>.db)'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    out?: string
+    json: boolean
+  }
+}
 
 function ts(): string {
   const d = new Date()

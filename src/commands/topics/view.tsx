@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text } from 'ink'
 import { gql } from '../../lib/client.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Topic } from './index.js'
 
-export const args = zod.tuple([
-  zod.string().describe('Topic ID'),
-])
-
-type Props = { args: zod.infer<typeof args> }
+type Props = {
+  args: [string]
+}
 
 const QUERY = `
   query Topics {

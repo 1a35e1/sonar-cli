@@ -1,14 +1,13 @@
 import React, { useEffect } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { writeConfig, getVendor } from '../../lib/config.js'
 
-export const options = zod.object({
-  key: zod.string().describe('Config key: vendor, feed-render, feed-width'),
-  value: zod.string().describe('Value to set'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    key: string
+    value: string
+  }
+}
 
 export default function ConfigSet({ options: flags }: Props) {
   useEffect(() => {

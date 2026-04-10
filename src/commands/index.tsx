@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text, useStdout } from 'ink'
 import { Banner } from '../components/Banner.js'
 import { Spinner } from '../components/Spinner.js'
@@ -9,21 +8,19 @@ import { gql } from '../lib/client.js'
 import { getFeedRender, getFeedWidth } from '../lib/config.js'
 import { TweetCard } from '../components/TweetCard.js'
 
-export const args = zod.tuple([]).rest(zod.string())
-
-export const options = zod.object({
-  hours: zod.number().optional().describe('Look back N hours (default: 12)'),
-  days: zod.number().optional().describe('Look back N days'),
-  limit: zod.number().optional().describe('Result limit (default: 20)'),
-  kind: zod.string().optional().describe('Feed source: default|bookmarks|followers|following'),
-  render: zod.string().optional().describe('Output layout: card|table'),
-  width: zod.number().optional().describe('Card width in columns'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-  interactive: zod.boolean().default(true).describe('Interactive session mode (default: on, use --no-interactive to disable)'),
-  vendor: zod.string().optional().describe('AI vendor: openai|anthropic'),
-})
-
-type Props = { options: zod.infer<typeof options>; args: string[] }
+type Props = {
+  options: {
+    hours?: number
+    days?: number
+    limit?: number
+    kind?: string
+    render?: string
+    width?: number
+    json: boolean
+    interactive: boolean
+    vendor?: string
+  }
+}
 
 interface SuggestionItem {
   suggestionId: string
@@ -59,21 +56,12 @@ const INBOX_QUERY = `
 
 const HAS_INTERESTS_QUERY = `query HasInterests { topics { id: nanoId } }`
 
-export default function Sonar({ options: flags, args: positionalArgs }: Props) {
+export default function Sonar({ options: flags }: Props) {
   const [items, setItems] = useState<UnifiedItem[] | null>(null)
   const [total, setTotal] = useState(0)
   const [noInterests, setNoInterests] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Unknown subcommand — show help hint
-  if (positionalArgs && positionalArgs.length > 0) {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color="red">Unknown command: {positionalArgs.join(' ')}</Text>
-        <Text dimColor>Run <Text color="cyan">sonar --help</Text> to see available commands.</Text>
-      </Box>
-    )
-  }
   const { stdout } = useStdout()
   const termWidth = stdout.columns ?? 100
   const cardWidth = getFeedWidth(flags.width)

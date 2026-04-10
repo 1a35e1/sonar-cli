@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text, useInput } from 'ink'
 import { gql } from '../../lib/client.js'
 import { getVendor } from '../../lib/config.js'
@@ -8,13 +7,13 @@ import type { GeneratedInterest } from '../../lib/ai.js'
 import { Spinner } from '../../components/Spinner.js'
 import type { Topic } from './index.js'
 
-export const options = zod.object({
-  vendor: zod.string().optional().describe('AI vendor: openai|anthropic'),
-  count: zod.number().optional().describe('Number of suggestions (default: 5)'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    vendor?: string
+    count?: number
+    json: boolean
+  }
+}
 
 const TOPICS_QUERY = `
   query Topics {

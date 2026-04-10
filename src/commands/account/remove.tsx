@@ -1,17 +1,13 @@
 import React, { useEffect } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { readAccounts, writeAccounts } from '../../lib/config.js'
 
-export const args = zod.tuple([
-  zod.string().describe('Account name to remove'),
-])
-
-export const options = zod.object({
-  force: zod.boolean().default(false).describe('Remove even if active'),
-})
-
-type Props = { args: zod.infer<typeof args>; options: zod.infer<typeof options> }
+type Props = {
+  args: [string]
+  options: {
+    force: boolean
+  }
+}
 
 export default function AccountRemove({ args: [name], options: flags }: Props) {
   useEffect(() => {

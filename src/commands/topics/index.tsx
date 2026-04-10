@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Box, Text, useStdout } from 'ink'
 import { gql } from '../../lib/client.js'
 import { Spinner } from '../../components/Spinner.js'
 import { TopicCard } from '../../components/TopicCard.js'
 
-export const options = zod.object({
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    json: boolean
+  }
+}
 
 export interface Topic {
   id: string

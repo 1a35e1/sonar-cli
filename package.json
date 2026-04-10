@@ -40,15 +40,14 @@
     "date-fns": "4.1.0",
     "graphql": "^16.12.0",
     "graphql-request": "^7.4.0",
+    "commander": "^12",
     "ink": "^6",
     "ink-link": "^5.0.0",
     "ink-table": "^3.1.0",
     "ink-text-input": "^6.0.0",
     "node-sqlite3-wasm": "^0.8.55",
-    "pastel": "^3.0.0",
     "react": "^19",
-    "unicode-animations": "^1.0.3",
-    "zod": "^3.25.76"
+    "unicode-animations": "^1.0.3"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.5",

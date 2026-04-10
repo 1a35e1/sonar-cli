@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { DB_PATH } from '../../lib/db.js'
 import { integrityCheck, copyDbWithSidecars } from '../../lib/data-utils.js'
 
-export const options = zod.object({
-  from: zod.string().describe('Backup database path to restore from'),
-  to: zod.string().optional().describe('Target database path (default: local sonar DB path)'),
-  json: zod.boolean().default(false).describe('Raw JSON output'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    from: string
+    to?: string
+    json: boolean
+  }
+}
 
 export default function DataRestore({ options: flags }: Props) {
   const [error, setError] = useState<string | null>(null)

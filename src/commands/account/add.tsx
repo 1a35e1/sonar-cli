@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { readAccounts, writeAccounts, migrateToAccounts } from '../../lib/config.js'
 
@@ -21,16 +20,13 @@ function randomName(): string {
   return `${adj}-${animal}`
 }
 
-export const args = zod.tuple([
-  zod.string().describe('API key (snr_...)'),
-])
-
-export const options = zod.object({
-  alias: zod.string().optional().describe('Account alias (default: random)'),
-  'api-url': zod.string().optional().describe('Custom API URL'),
-})
-
-type Props = { args: zod.infer<typeof args>; options: zod.infer<typeof options> }
+type Props = {
+  args: [string]
+  options: {
+    alias?: string
+    apiUrl?: string
+  }
+}
 
 export default function AccountAdd({ args: [key], options: flags }: Props) {
   useEffect(() => {
@@ -51,7 +47,7 @@ export default function AccountAdd({ args: [key], options: flags }: Props) {
 
     data.accounts[name] = {
       token: key,
-      apiUrl: flags['api-url'] ?? 'https://api.sonar.8640p.info/graphql',
+      apiUrl: flags.apiUrl ?? 'https://api.sonar.8640p.info/graphql',
     }
 
     // If this is the first account, make it active

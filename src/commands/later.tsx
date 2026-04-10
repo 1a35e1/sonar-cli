@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { gql } from '../lib/client.js'
 import { Spinner } from '../components/Spinner.js'
 
-export const options = zod.object({
-  id: zod.string().describe('Suggestion ID to save for later'),
-})
-
-type Props = { options: zod.infer<typeof options> }
+type Props = {
+  options: {
+    id: string
+  }
+}
 
 const UPDATE_MUTATION = `
   mutation UpdateSuggestion($suggestionId: ID!, $status: SuggestionStatus!) {

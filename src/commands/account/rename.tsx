@@ -1,14 +1,10 @@
 import React, { useEffect } from 'react'
-import zod from 'zod'
 import { Text } from 'ink'
 import { readAccounts, writeAccounts } from '../../lib/config.js'
 
-export const args = zod.tuple([
-  zod.string().describe('Current account name'),
-  zod.string().describe('New account name'),
-])
-
-type Props = { args: zod.infer<typeof args> }
+type Props = {
+  args: [string, string]
+}
 
 export default function AccountRename({ args: [oldName, newName] }: Props) {
   useEffect(() => {
