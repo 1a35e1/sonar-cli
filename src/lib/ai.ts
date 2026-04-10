@@ -345,6 +345,84 @@ export async function generateInterest(prompt: string, vendor: Vendor): Promise<
   throw new Error(`Unknown vendor: ${vendor}. Supported: openai, anthropic`)
 }
 
+// ─── Analysis (free-form text) ───────────────────────────────────────────────
+
+async function callOpenAIAnalyze(system: string, user: string, apiKey: string): Promise<string> {
+  return fetchWithTimeout(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+      }),
+    },
+    OPENAI_TIMEOUT_MS,
+    'OpenAI',
+    async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(`OpenAI error: ${(err as any)?.error?.message ?? res.status}`)
+      }
+      const data = await res.json()
+      return data.choices?.[0]?.message?.content ?? ''
+    },
+  )
+}
+
+async function callAnthropicAnalyze(system: string, user: string, apiKey: string): Promise<string> {
+  return fetchWithTimeout(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system,
+        messages: [{ role: 'user', content: user }],
+      }),
+    },
+    ANTHROPIC_TIMEOUT_MS,
+    'Anthropic',
+    async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
+      }
+      const data = await res.json()
+      return data.content?.[0]?.text ?? ''
+    },
+  )
+}
+
+export async function analyze(system: string, user: string, vendor: Vendor): Promise<string> {
+  if (vendor === 'openai') {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error('OPENAI_API_KEY is not set')
+    return callOpenAIAnalyze(system, user, apiKey)
+  }
+
+  if (vendor === 'anthropic') {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set')
+    return callAnthropicAnalyze(system, user, apiKey)
+  }
+
+  throw new Error(`Unknown vendor: ${vendor}. Supported: openai, anthropic`)
+}
+
 // ─── Topic Suggestions ───────────────────────────────────────────────────────
 
 const SUGGEST_SYSTEM_PROMPT = `You suggest new topics for a social intelligence tool that tracks interests on X (Twitter). Given the user's existing topics and a sample of recent tweets from their feed, suggest new topics that are adjacent to but distinct from what they already track.
