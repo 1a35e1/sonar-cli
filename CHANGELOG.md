@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-04-10
+
+### Added
+
+- **feat: data export** — `sonar data export --format json --window 1d` for bulk suggestion/bookmark/like export with cursor pagination.
+- **feat: X API rate limit handling** — detect 429s explicitly with retry guidance.
+
+### Changed
+
+- **refactor: migrate CLI from Pastel to Commander + Ink** — faster startup, better arg parsing, composable subcommands.
+- **refactor: extract parseWindow to lib/time** — shared time window parsing across commands.
+- **refactor: add analysis helpers to lib/ai** — structured OpenAI/Anthropic analysis calls for upcoming lens commands.
+
+### Fixed
+
+- **fix: use structured outputs for LLM response parsing** — replaces fragile regex with JSON schema validation.
+- **fix: client-side input validation** — topic names and descriptions validated before API call.
+
 ## [0.4.0] - 2026-04-08
 
 ### Added
