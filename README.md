@@ -28,6 +28,19 @@ View your account status:
 sonar status
 ```
 
+Add at least one topic so Sonar knows what to look for:
+
+```sh
+sonar topics add "AI agents"
+sonar topics add "Ethereum DeFi"
+```
+
+Topics are how Sonar matches content from your network. The more specific, the better — `"onchain governance mechanisms"` beats `"crypto"`. You can also let AI suggest topics based on your bookmarks and likes:
+
+```sh
+sonar topics suggest
+```
+
 Run your first refresh to index tweets and generate suggestions:
 
 > The first time you run this it will take some time.
@@ -266,6 +279,20 @@ sonar skip --id <suggestion_id>      # skip a suggestion
 sonar later --id <suggestion_id>     # save for later
 sonar archive --id <suggestion_id>   # archive a suggestion
 ```
+
+### Lens (paid)
+
+AI-powered analysis of your local data using embeddings. Requires a paid plan — run `sonar data pull` first to sync embeddings.
+
+```bash
+sonar lens blindspots --window 3d    # what your topics are missing
+sonar lens emerging --window 3d      # small accounts gaining credibility
+sonar lens experts --window 3d       # genuine domain experts per topic
+sonar lens contrarian --window 3d    # credible disagreements with consensus
+sonar lens diff --window 3d          # how narratives shifted over time
+```
+
+All lens commands accept `--vendor openai|anthropic`, `--json`, and `--window`.
 
 ### Data
 
