@@ -58,6 +58,12 @@ import TopicsDeleteCmd from './commands/topics/delete.js'
 import TopicsSuggestCmd from './commands/topics/suggest.js'
 import TopicsViewCmd from './commands/topics/view.js'
 
+import LensEmergingCmd from './commands/lens/emerging.js'
+import LensDiffCmd from './commands/lens/diff.js'
+import LensExpertsCmd from './commands/lens/experts.js'
+import LensContrarianCmd from './commands/lens/contrarian.js'
+import LensBlindspotCmd from './commands/lens/blindspots.js'
+
 // ── Program ─────────────────────────────────────────────────────────
 const program = new Command('sonar')
   .version(pkg.version, '-v, --version')
@@ -250,6 +256,40 @@ topics.command('suggest').description('Discover new topics with AI')
 topics.command('view').description('View topic details')
   .argument('<id>', 'Topic ID')
   .action((id: string) => { run(TopicsViewCmd, { args: [id] }) })
+
+// ── sonar lens ─────────────────────────────────────────────────────
+const lens = program.command('lens').description('Analyze local data with AI')
+
+lens.command('emerging').description('Accounts gaining credibility before widely discovered')
+  .option('--window <value>', 'Time window (e.g. 1d, 12h, 1w)', '1d')
+  .option('--vendor <value>', 'AI vendor: openai|anthropic')
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(LensEmergingCmd, { options: opts }) })
+
+lens.command('diff').description('How narratives shifted between time windows')
+  .option('--window <value>', 'Time window (e.g. 1d, 12h, 1w)', '1d')
+  .option('--vendor <value>', 'AI vendor: openai|anthropic')
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(LensDiffCmd, { options: opts }) })
+
+lens.command('experts').description('Genuine expertise separated from performative commentary')
+  .option('--window <value>', 'Time window (e.g. 1d, 12h, 1w)', '1d')
+  .option('--vendor <value>', 'AI vendor: openai|anthropic')
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(LensExpertsCmd, { options: opts }) })
+
+lens.command('contrarian').description('Credible people disagreeing with consensus')
+  .option('--window <value>', 'Time window (e.g. 1d, 12h, 1w)', '1d')
+  .option('--vendor <value>', 'AI vendor: openai|anthropic')
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(LensContrarianCmd, { options: opts }) })
+
+lens.command('blindspots').description('Important conversations your network is missing')
+  .option('--window <value>', 'Time window (e.g. 1d, 12h, 1w)', '1d')
+  .option('--vendor <value>', 'AI vendor: openai|anthropic')
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(LensBlindspotCmd, { options: opts }) })
+
 
 // ── Parse ───────────────────────────────────────────────────────────
 await program.parseAsync()

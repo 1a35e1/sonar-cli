@@ -15,6 +15,7 @@ type Props = {
 }
 
 const MODELS = ['tweets', 'users', 'suggestions', 'bookmarks', 'likes', 'topics']
+const PAID_MODELS = ['tweet_embeddings', 'topic_embeddings']
 
 export default function DataPull({ options: flags }: Props) {
   const [counts, setCounts] = useState<Record<string, number> | null>(null)
@@ -57,6 +58,31 @@ export default function DataPull({ options: flags }: Props) {
           result[model] = getRowCount(db, model === 'users' ? 'users' : model)
         }
 
+        // Try embedding models — silently skip if plan doesn't support it
+        for (const model of PAID_MODELS) {
+          try {
+            setStatus(`Pulling ${model}...`)
+            let cursor: string | null = null
+            let total = 0
+
+            while (true) {
+              const res: { dataExport: DataExportPage } = await gql(
+                DATA_EXPORT_QUERY,
+                { model, limit: 500, cursor },
+              )
+              const page = res.dataExport
+              const inserted = insertExportRows(db, model, page.items as Record<string, any>[])
+              total += inserted
+              if (!page.cursor) break
+              cursor = page.cursor
+            }
+
+            if (total > 0) result[model] = total
+          } catch {
+            // Plan doesn't support embeddings — skip silently
+          }
+        }
+
         db.close()
         setCounts(result)
       } catch (err) {
@@ -76,9 +102,9 @@ export default function DataPull({ options: flags }: Props) {
         <Text dimColor>  {DB_PATH}</Text>
       </Box>
       <Box gap={2} flexWrap="wrap">
-        {MODELS.map(m => (
+        {[...MODELS, ...PAID_MODELS].filter(m => counts[m] !== undefined).map(m => (
           <Text key={m}>
-            <Text color="cyan">{counts[m] ?? 0}</Text>
+            <Text color="cyan">{counts[m]}</Text>
             <Text dimColor> {m}</Text>
           </Text>
         ))}

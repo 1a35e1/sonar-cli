@@ -53,6 +53,17 @@ export function openDb(): Db {
       created_at TEXT,
       updated_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS tweet_embeddings (
+      tweet_id TEXT PRIMARY KEY,
+      embedding BLOB,
+      model TEXT
+    );
+    CREATE TABLE IF NOT EXISTS topic_embeddings (
+      topic_id TEXT PRIMARY KEY,
+      name TEXT,
+      embedding BLOB,
+      model TEXT
+    );
     CREATE TABLE IF NOT EXISTS sync_cursors (
       model TEXT PRIMARY KEY,
       cursor TEXT
@@ -89,6 +100,14 @@ export function insertExportRows(db: Db, model: string, rows: Record<string, any
     topics: (r) => db.run(
       'INSERT OR REPLACE INTO topics (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
       [r.id, r.name, r.description, r.created_at, r.updated_at],
+    ),
+    tweet_embeddings: (r) => db.run(
+      'INSERT OR REPLACE INTO tweet_embeddings (tweet_id, embedding, model) VALUES (?, ?, ?)',
+      [r.tweet_id, new Uint8Array(new Float32Array(r.embedding as number[]).buffer), r.model],
+    ),
+    topic_embeddings: (r) => db.run(
+      'INSERT OR REPLACE INTO topic_embeddings (topic_id, name, embedding, model) VALUES (?, ?, ?, ?)',
+      [r.topic_id, r.name, new Uint8Array(new Float32Array(r.embedding as number[]).buffer), r.model],
     ),
   }
 
@@ -165,6 +184,11 @@ export function upsertBookmark(db: Db, tweetId: string): void {
 
 export function upsertLike(db: Db, tweetId: string): void {
   db.run('INSERT OR REPLACE INTO likes (tweet_id, indexed_at) VALUES (?, ?)', [tweetId, new Date().toISOString()])
+}
+
+export function hasEmbeddings(db: Db): boolean {
+  const row = db.get('SELECT COUNT(*) as n FROM topic_embeddings') as { n: number }
+  return row.n > 0
 }
 
 export function getSyncState(db: Db, key: string): string | null {

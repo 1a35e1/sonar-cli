@@ -1,6 +1,6 @@
 {
   "source": "src/commands/**/*.tsx",
-  "commandCount": 31,
+  "commandCount": 36,
   "commands": [
     "sonar",
     "sonar account",
@@ -24,6 +24,11 @@
     "sonar data verify",
     "sonar feed",
     "sonar later",
+    "sonar lens blindspots",
+    "sonar lens contrarian",
+    "sonar lens diff",
+    "sonar lens emerging",
+    "sonar lens experts",
     "sonar refresh",
     "sonar skip",
     "sonar status",
