@@ -31,8 +31,8 @@ export interface TriageItem {
 }
 
 const UPDATE_MUTATION = `
-  mutation UpdateSuggestion($suggestionId: ID!, $status: SuggestionStatus!) {
-    updateSuggestion(input: { suggestionId: $suggestionId, status: $status }) {
+  mutation UpdateSuggestion($suggestionId: ID!, $status: SuggestionStatus!, $feedback: String) {
+    updateSuggestion(input: { suggestionId: $suggestionId, status: $status, feedback: $feedback }) {
       suggestionId
       status
     }
@@ -59,6 +59,7 @@ interface PendingAction {
   timer: ReturnType<typeof setTimeout>
   suggestionId: string
   status: string
+  feedback?: string
   index: number
 }
 
@@ -102,8 +103,9 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   const current = items[index]
 
   function commitAction(action: PendingAction) {
-    gql(UPDATE_MUTATION, { suggestionId: action.suggestionId, status: action.status })
-      .catch(() => {})
+    const vars: Record<string, unknown> = { suggestionId: action.suggestionId, status: action.status }
+    if (action.feedback) vars.feedback = action.feedback
+    gql(UPDATE_MUTATION, vars).catch(() => {})
   }
 
   const act = useCallback(
@@ -142,14 +144,27 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   }, [pending])
 
   const submitSkip = useCallback(() => {
-    if (skipReason.trim()) {
-      // TODO: send reason to backend when API supports it
-      process.stderr.write(`[skip reason] ${current?.tweet?.xid}: ${skipReason.trim()}\n`)
-    }
+    const reason = skipReason.trim() || undefined
     setSkipPrompt(false)
     setSkipReason('')
-    act('SKIPPED', 'skipped')
-  }, [skipReason, act, current])
+
+    const item = items[index]
+    if (pending) {
+      clearTimeout(pending.timer)
+      commitAction(pending)
+    }
+
+    if (item.suggestionId) {
+      const timer = setTimeout(() => {
+        commitAction({ timer: 0 as any, suggestionId: item.suggestionId!, status: 'SKIPPED', index, feedback: reason })
+        setPending(null)
+      }, UNDO_WINDOW_MS)
+      setPending({ timer, suggestionId: item.suggestionId, status: 'SKIPPED', index, feedback: reason })
+    }
+
+    setLastAction('skipped')
+    setIndex((i) => i + 1)
+  }, [skipReason, index, items, pending])
 
   useInput(
     (input, key) => {
