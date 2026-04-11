@@ -10,7 +10,7 @@ import type { DataExportPage } from '../../lib/data-queries.js'
 type Props = {
   options: {
     debug: boolean
-    fresh: boolean
+    force: boolean
   }
 }
 
@@ -25,7 +25,7 @@ export default function DataPull({ options: flags }: Props) {
   useEffect(() => {
     async function run() {
       try {
-        if (flags.fresh && existsSync(DB_PATH)) unlinkSync(DB_PATH)
+        if (flags.force && existsSync(DB_PATH)) unlinkSync(DB_PATH)
 
         const db = openDb()
         const result: Record<string, number> = {}

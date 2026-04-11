@@ -193,7 +193,7 @@ const data = program.command('data').description('Manage local data')
 
 data.command('pull').description('Download data from API')
   .option('--debug', 'Show request timing', false)
-  .option('--fresh', 'Delete local DB and pull everything', false)
+  .option('--force', 'Delete local DB and pull everything', false)
   .action((opts) => { run(DataPullCmd, { options: opts }) })
 
 data.command('export').description('Export tweets as CSV or JSON')
