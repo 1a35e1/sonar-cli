@@ -31,8 +31,8 @@ export interface TriageItem {
 }
 
 const UPDATE_MUTATION = `
-  mutation UpdateSuggestion($suggestionId: ID!, $status: SuggestionStatus!, $feedback: String) {
-    updateSuggestion(input: { suggestionId: $suggestionId, status: $status, feedback: $feedback }) {
+  mutation UpdateSuggestion($suggestionId: ID!, $status: SuggestionStatus!, $feedback: String, $score: RelevanceLevel) {
+    updateSuggestion(input: { suggestionId: $suggestionId, status: $status, feedback: $feedback, score: $score }) {
       suggestionId
       status
     }
@@ -60,6 +60,7 @@ interface PendingAction {
   suggestionId: string
   status: string
   feedback?: string
+  score?: string
   index: number
 }
 
@@ -105,6 +106,7 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
   function commitAction(action: PendingAction) {
     const vars: Record<string, unknown> = { suggestionId: action.suggestionId, status: action.status }
     if (action.feedback) vars.feedback = action.feedback
+    if (action.score) vars.score = action.score
     gql(UPDATE_MUTATION, vars).catch(() => {})
   }
 
@@ -156,10 +158,10 @@ export function TriageSession({ items: initialItems, total: initialTotal, fetchM
 
     if (item.suggestionId) {
       const timer = setTimeout(() => {
-        commitAction({ timer: 0 as any, suggestionId: item.suggestionId!, status: 'SKIPPED', index, feedback: reason })
+        commitAction({ timer: 0 as any, suggestionId: item.suggestionId!, status: 'SKIPPED', index, feedback: reason, score: 'NONE' })
         setPending(null)
       }, UNDO_WINDOW_MS)
-      setPending({ timer, suggestionId: item.suggestionId, status: 'SKIPPED', index, feedback: reason })
+      setPending({ timer, suggestionId: item.suggestionId, status: 'SKIPPED', index, feedback: reason, score: 'NONE' })
     }
 
     setLastAction('skipped')
