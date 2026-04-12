@@ -64,6 +64,12 @@ import LensExpertsCmd from './commands/lens/experts.js'
 import LensContrarianCmd from './commands/lens/contrarian.js'
 import LensBlindspotCmd from './commands/lens/blindspots.js'
 
+import StatsCmd from './commands/stats/index.js'
+import StatsAuthorsCmd from './commands/stats/authors.js'
+import StatsNetworkCmd from './commands/stats/network.js'
+import StatsEngagementCmd from './commands/stats/engagement.js'
+import StatsTimelineCmd from './commands/stats/timeline.js'
+
 // ── Program ─────────────────────────────────────────────────────────
 const program = new Command('sonar')
   .version(pkg.version, '-v, --version')
@@ -289,6 +295,30 @@ lens.command('blindspots').description('Important conversations your network is 
   .option('--vendor <value>', 'AI vendor: openai|anthropic')
   .option('--json', 'JSON output', false)
   .action((opts) => { run(LensBlindspotCmd, { options: opts }) })
+
+// ── sonar stats ────────────────────────────────────────────────────
+const stats = program.command('stats').description('Local network + engagement stats with terminal plots')
+stats
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(StatsCmd, { options: opts }) })
+
+stats.command('authors').description('Top authors by tweet count + engagement')
+  .option('--json', 'JSON output', false)
+  .option('--limit <n>', 'Max authors to show (default: 20)', (v) => Number(v), 20)
+  .action((opts) => { run(StatsAuthorsCmd, { options: opts }) })
+
+stats.command('network').description('Network size and follower distribution')
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(StatsNetworkCmd, { options: opts }) })
+
+stats.command('engagement').description('Bookmark + like patterns')
+  .option('--json', 'JSON output', false)
+  .action((opts) => { run(StatsEngagementCmd, { options: opts }) })
+
+stats.command('timeline').description('Sparkline time series of activity')
+  .option('--json', 'JSON output', false)
+  .option('--days <n>', 'Days to include (default: 30)', (v) => Number(v), 30)
+  .action((opts) => { run(StatsTimelineCmd, { options: opts }) })
 
 
 // ── Parse ───────────────────────────────────────────────────────────
