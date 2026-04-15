@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.4] - 2026-04-15
+
+### Added
+
+- **feat: surface suggestion_source in exports** — New `suggestion_source` column in `data export` reflects backend provenance (`network` / `search:api` / `grok:ai`) so you can tell which venue produced each suggestion. Existing `source` content-type column is unchanged.
+- **feat: move skill content to SKILL.md at repo root** — Skill now ships as a top-level SKILL.md for easier discovery.
+
+### Changed
+
+- **revert: drop sonar stats command (underwhelming)** — Removed the previously-added `sonar stats` command; terminal plots didn't add enough value over existing views.
+
 ## [0.5.3] - 2026-04-11
 
 ### Fixed
