@@ -42,7 +42,8 @@ const QUERY = `
       'feed'
     ) AS source,
     s.similarity,
-    s.status AS suggestion_status
+    s.status AS suggestion_status,
+    s.source AS suggestion_source
   FROM tweets t
   JOIN users u ON t.xid = u.xid
   LEFT JOIN bookmarks b ON b.tweet_id = t.id
@@ -55,7 +56,7 @@ const QUERY = `
 const COLUMNS = [
   'status_link', 'profile', 'username', 'author',
   'like_count', 'retweet_count', 'reply_count', 'created_at',
-  'source', 'similarity', 'suggestion_status', 'content',
+  'source', 'similarity', 'suggestion_status', 'suggestion_source', 'content',
 ]
 
 export default function DataExport({ options: flags }: Props) {

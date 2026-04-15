@@ -36,7 +36,8 @@ export function openDb(): Db {
       tweet_id TEXT,
       similarity REAL,
       status TEXT,
-      created_at TEXT
+      created_at TEXT,
+      source TEXT DEFAULT 'network'
     );
     CREATE TABLE IF NOT EXISTS bookmarks (
       tweet_id TEXT PRIMARY KEY,
@@ -69,6 +70,14 @@ export function openDb(): Db {
       cursor TEXT
     );
   `)
+
+  // Idempotent migration for existing DBs missing the suggestions.source column.
+  const hasSource = (db.all('PRAGMA table_info(suggestions)') as { name: string }[])
+    .some(col => col.name === 'source')
+  if (!hasSource) {
+    db.exec("ALTER TABLE suggestions ADD COLUMN source TEXT DEFAULT 'network'")
+  }
+
   return db
 }
 
@@ -86,8 +95,8 @@ export function insertExportRows(db: Db, model: string, rows: Record<string, any
       [r.xid, r.username, r.name, r.description, r.followers_count, r.following_count],
     ),
     suggestions: (r) => db.run(
-      'INSERT OR REPLACE INTO suggestions (id, tweet_id, similarity, status, created_at) VALUES (?, ?, ?, ?, ?)',
-      [r.id, r.tweet_id, r.similarity, r.status, r.created_at],
+      'INSERT OR REPLACE INTO suggestions (id, tweet_id, similarity, status, created_at, source) VALUES (?, ?, ?, ?, ?, ?)',
+      [r.id, r.tweet_id, r.similarity, r.status, r.created_at, r.source ?? 'network'],
     ),
     bookmarks: (r) => db.run(
       'INSERT OR REPLACE INTO bookmarks (tweet_id, indexed_at) VALUES (?, ?)',
