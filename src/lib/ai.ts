@@ -1,5 +1,41 @@
 import type { Vendor } from './config.js'
 
+// ─── Vendor Response Types ──────────────────────────────────────────────────
+
+interface VendorErrorBody {
+  error?: { message?: string }
+}
+
+interface OpenAIResponsesContent {
+  type: string
+  text?: string
+}
+
+interface OpenAIResponsesOutputItem {
+  type: string
+  content?: OpenAIResponsesContent[]
+}
+
+interface OpenAIResponsesResult {
+  output?: OpenAIResponsesOutputItem[]
+}
+
+interface OpenAIChatCompletionResult {
+  choices?: { message: { role: string; content: string | null } }[]
+}
+
+interface AnthropicContentBlock {
+  type: string
+  text?: string
+  input?: unknown
+}
+
+interface AnthropicMessagesResult {
+  content?: AnthropicContentBlock[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Extracts the outermost JSON object from a string that may contain markdown
  * fences or surrounding prose. Exported for testing and use as a fallback.
@@ -155,15 +191,15 @@ async function callOpenAI(prompt: string, apiKey: string): Promise<GeneratedInte
     'OpenAI',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`OpenAI error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorBody
+        throw new Error(`OpenAI error: ${err.error?.message ?? res.status}`)
       }
-      const data = await res.json()
+      const data = (await res.json()) as OpenAIResponsesResult
       const text = data.output
-        ?.filter((b: any) => b.type === 'message')
-        .flatMap((b: any) => b.content)
-        .filter((c: any) => c.type === 'output_text')
-        .map((c: any) => c.text)
+        ?.filter((b) => b.type === 'message')
+        .flatMap((b) => b.content ?? [])
+        .filter((c) => c.type === 'output_text')
+        .map((c) => c.text ?? '')
         .join('') ?? ''
       return parseJSON<GeneratedInterest>(text, 'OpenAI interest response')
     },
@@ -199,12 +235,12 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<GeneratedI
     'Anthropic',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorBody
+        throw new Error(`Anthropic error: ${err.error?.message ?? res.status}`)
       }
-      const data = await res.json()
-      const toolBlock = data.content?.find((b: any) => b.type === 'tool_use')
-      if (!toolBlock) {
+      const data = (await res.json()) as AnthropicMessagesResult
+      const toolBlock = data.content?.find((b) => b.type === 'tool_use')
+      if (!toolBlock?.input) {
         throw new Error('Anthropic response did not include a tool_use block with structured output')
       }
       return toolBlock.input as GeneratedInterest
@@ -253,10 +289,10 @@ async function callOpenAIReply(tweetText: string, userPrompt: string, apiKey: st
     'OpenAI',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`OpenAI error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorBody
+        throw new Error(`OpenAI error: ${err.error?.message ?? res.status}`)
       }
-      const data = await res.json()
+      const data = (await res.json()) as OpenAIChatCompletionResult
       const text = data.choices?.[0]?.message?.content ?? ''
       return parseJSON<GeneratedReply>(text, 'OpenAI reply response')
     },
@@ -296,12 +332,12 @@ async function callAnthropicReply(tweetText: string, userPrompt: string, apiKey:
     'Anthropic',
     async (res) => {
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
+        const err = (await res.json().catch(() => ({}))) as VendorErrorBody
+        throw new Error(`Anthropic error: ${err.error?.message ?? res.status}`)
       }
-      const data = await res.json()
-      const toolBlock = data.content?.find((b: any) => b.type === 'tool_use')
-      if (!toolBlock) {
+      const data = (await res.json()) as AnthropicMessagesResult
+      const toolBlock = data.content?.find((b) => b.type === 'tool_use')
+      if (!toolBlock?.input) {
         throw new Error('Anthropic response did not include a tool_use block with structured output')
       }
       return toolBlock.input as GeneratedReply
@@ -481,15 +517,15 @@ export async function generateTopicSuggestions(
       'OpenAI',
       async (res) => {
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(`OpenAI error: ${(err as any)?.error?.message ?? res.status}`)
+          const err = (await res.json().catch(() => ({}))) as VendorErrorBody
+          throw new Error(`OpenAI error: ${err.error?.message ?? res.status}`)
         }
-        const data = await res.json()
+        const data = (await res.json()) as OpenAIResponsesResult
         const text = data.output
-          ?.filter((b: any) => b.type === 'message')
-          .flatMap((b: any) => b.content)
-          .filter((c: any) => c.type === 'output_text')
-          .map((c: any) => c.text)
+          ?.filter((b) => b.type === 'message')
+          .flatMap((b) => b.content ?? [])
+          .filter((c) => c.type === 'output_text')
+          .map((c) => c.text ?? '')
           .join('') ?? ''
         return parseJSON<GeneratedInterest[]>(text, 'OpenAI suggestions response')
       },
@@ -534,15 +570,16 @@ export async function generateTopicSuggestions(
       'Anthropic',
       async (res) => {
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(`Anthropic error: ${(err as any)?.error?.message ?? res.status}`)
+          const err = (await res.json().catch(() => ({}))) as VendorErrorBody
+          throw new Error(`Anthropic error: ${err.error?.message ?? res.status}`)
         }
-        const data = await res.json()
-        const toolBlock = data.content?.find((b: any) => b.type === 'tool_use')
-        if (!toolBlock) {
+        const data = (await res.json()) as AnthropicMessagesResult
+        const toolBlock = data.content?.find((b) => b.type === 'tool_use')
+        if (!toolBlock?.input) {
           throw new Error('Anthropic response did not include a tool_use block with structured output')
         }
-        return toolBlock.input.suggestions as GeneratedInterest[]
+        const wrapper = toolBlock.input as { suggestions: GeneratedInterest[] }
+        return wrapper.suggestions
       },
     )
   }
